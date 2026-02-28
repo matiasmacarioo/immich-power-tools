@@ -5,9 +5,11 @@ import LazyImage from '@/components/ui/lazy-image'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { AlertDialog } from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
 import { humanizeBytes, humanizeNumber } from '@/helpers/string.helper'
 import { formatDate } from '@/helpers/date.helper'
-import { Camera, Calendar, HardDrive, MapPin, Trash2, Check, X, Shield } from 'lucide-react'
+import { Camera, Calendar, FolderOpen, HardDrive, MapPin, Trash2, Check, X, Shield } from 'lucide-react'
+import { IAssetAlbumInfo } from '@/handlers/api/asset.handler'
 
 interface DuplicateAssetRecordProps {
   record: IDuplicateAssetRecord
@@ -17,6 +19,7 @@ interface DuplicateAssetRecordProps {
   onKeepSelected: (record: IDuplicateAssetRecord, selectedIds: string[], unselectedIds: string[]) => void
   onKeepAllInRecord: (record: IDuplicateAssetRecord) => void
   selectionMode: 'keep' | 'discard'
+  assetAlbums: Record<string, IAssetAlbumInfo[]>
 }
 
 interface DuplicateAssetItemProps {
@@ -24,9 +27,10 @@ interface DuplicateAssetItemProps {
   isSelected: boolean
   onSelect: (assetId: string, isShiftClick?: boolean) => void
   selectionMode: 'keep' | 'discard'
+  albums: IAssetAlbumInfo[]
 }
 
-function DuplicateAssetItem({ asset, isSelected, onSelect, selectionMode }: DuplicateAssetItemProps) {
+function DuplicateAssetItem({ asset, isSelected, onSelect, selectionMode, albums }: DuplicateAssetItemProps) {
   const handleCheckboxChange = (event: React.MouseEvent) => {
     const isShiftClick = event.shiftKey
     onSelect(asset.id, isShiftClick)
@@ -124,6 +128,21 @@ function DuplicateAssetItem({ asset, isSelected, onSelect, selectionMode }: Dupl
               {asset.exifInfo.make} {asset.exifInfo.model}
             </div>
           )}
+
+          {albums.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {albums.map((album) => (
+                <Badge
+                  key={album.albumId}
+                  variant="secondary"
+                  className="text-[10px] px-1.5 py-0 gap-0.5"
+                >
+                  <FolderOpen size={10} />
+                  {album.albumName}
+                </Badge>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -137,7 +156,8 @@ export default function DuplicateAssetRecord({
   onDeleteRecord, 
   onKeepSelected,
   onKeepAllInRecord,
-  selectionMode
+  selectionMode,
+  assetAlbums
 }: DuplicateAssetRecordProps) {
   const recordAssetIds = record.assets.map(asset => asset.id)
   const selectedInRecord = recordAssetIds.filter(id => selectedAssets.has(id)).length
@@ -302,6 +322,7 @@ export default function DuplicateAssetRecord({
             isSelected={selectedAssets.has(asset.id)}
             onSelect={onAssetSelect}
             selectionMode={selectionMode}
+            albums={assetAlbums[asset.id] || []}
           />
         ))}
       </div>

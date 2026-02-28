@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react'
 import { VariableSizeList as List } from 'react-window'
 import { IDuplicateAssetRecord } from '@/types/asset'
+import { IAssetAlbumInfo } from '@/handlers/api/asset.handler'
 import DuplicateAssetRecord from './DuplicateAssetRecord'
 
 interface VirtualizedDuplicateListProps {
@@ -12,6 +13,7 @@ interface VirtualizedDuplicateListProps {
   onKeepAllInRecord: (record: IDuplicateAssetRecord) => void
   height: number
   selectionMode: 'keep' | 'discard'
+  assetAlbums: Record<string, IAssetAlbumInfo[]>
 }
 
 interface ListItemProps {
@@ -25,11 +27,12 @@ interface ListItemProps {
     onKeepSelected: (record: IDuplicateAssetRecord, selectedIds: string[], unselectedIds: string[]) => void
     onKeepAllInRecord: (record: IDuplicateAssetRecord) => void
     selectionMode: 'keep' | 'discard'
+    assetAlbums: Record<string, IAssetAlbumInfo[]>
   }
 }
 
 const ListItem: React.FC<ListItemProps> = ({ index, style, data }) => {
-  const { duplicates, selectedAssets, onAssetSelect, onDeleteRecord, onKeepSelected, onKeepAllInRecord, selectionMode } = data
+  const { duplicates, selectedAssets, onAssetSelect, onDeleteRecord, onKeepSelected, onKeepAllInRecord, selectionMode, assetAlbums } = data
   const record = duplicates[index]
 
   return (
@@ -43,6 +46,7 @@ const ListItem: React.FC<ListItemProps> = ({ index, style, data }) => {
           onKeepSelected={onKeepSelected}
           onKeepAllInRecord={onKeepAllInRecord}
           selectionMode={selectionMode}
+          assetAlbums={assetAlbums}
         />
       </div>
     </div>
@@ -72,7 +76,8 @@ export default function VirtualizedDuplicateList({
   onKeepSelected,
   onKeepAllInRecord,
   height,
-  selectionMode
+  selectionMode,
+  assetAlbums
 }: VirtualizedDuplicateListProps) {
   // Custom item size getter for VariableSizeList
   const getItemHeight = (index: number) => {
@@ -88,7 +93,8 @@ export default function VirtualizedDuplicateList({
     onDeleteRecord,
     onKeepSelected,
     onKeepAllInRecord,
-    selectionMode
+    selectionMode,
+    assetAlbums
   }
 
   // For better performance with many items, we'll use a custom implementation
