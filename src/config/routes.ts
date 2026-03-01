@@ -29,7 +29,12 @@ export const CREATE_ALBUM_PATH = BASE_PROXY_ENDPOINT + "/albums";
 export const ADD_ASSETS_ALBUMS_PATH = (id: string) => BASE_PROXY_ENDPOINT + "/albums/" + id + "/assets";
 export const SHARE_ALBUMS_PATH = BASE_API_ENDPOINT + "/albums/share";
 export const DELETE_ALBUMS_PATH = BASE_API_ENDPOINT + "/albums/delete";
+
+
+export const ADD_ASSETS_TO_ALBUM_PATH = (id: string) => BASE_PROXY_ENDPOINT + "/albums/" + id + "/assets";
+export const MERGE_ALBUMS_PATH = BASE_API_ENDPOINT + "/albums/merge";
 // Assets
+export const ASSET_ALBUMS_BY_ASSETS_PATH = BASE_API_ENDPOINT + "/assets/albums-by-assets";
 export const LIST_MISSING_LOCATION_DATES_PATH = BASE_API_ENDPOINT + "/assets/missing-location-dates";
 export const LIST_MISSING_LOCATION_ALBUMS_PATH = BASE_API_ENDPOINT + "/assets/missing-location-albums";
 export const LIST_MISSING_LOCATION_ASSETS_PATH = BASE_API_ENDPOINT + "/assets/missing-location-assets";
@@ -38,6 +43,9 @@ export const ASSET_THUMBNAIL_PATH = (id: string) => BASE_PROXY_ENDPOINT + "/asse
 export const ASSET_PREVIEW_PATH = (id: string) => BASE_PROXY_ENDPOINT + "/asset/thumbnail/" + id + "?size=preview";
 export const ASSET_VIDEO_PATH = (id: string) => BASE_PROXY_ENDPOINT + "/asset/video/" + id;
 export const ASSET_GEO_HEATMAP_PATH = BASE_API_ENDPOINT + "/assets/geo-heatmap";
+export const LIST_EMPTY_VIDEOS_PATH = BASE_API_ENDPOINT + "/assets/empty-videos";
+
+
 
 export const ASSET_SHARE_THUMBNAIL_PATH = (
   { id, size, token, isPeople }: { id: string, size: string, token: string, isPeople: boolean }
@@ -52,6 +60,9 @@ export const SEARCH_PLACES_PATH = BASE_PROXY_ENDPOINT + "/search/places";
 export const ASSET_STATISTICS = BASE_PROXY_ENDPOINT + "/assets/statistics";
 export const LIVE_PHOTO_STATISTICS = BASE_API_ENDPOINT + "/analytics/statistics/livephoto";
 export const HEATMAP_DATA = BASE_API_ENDPOINT + "/analytics/statistics/heatmap";
+export const PEOPLE_NAMES_STATISTICS = BASE_API_ENDPOINT + "/analytics/statistics/people-names";
+export const GEO_PHOTOS_STATISTICS = BASE_API_ENDPOINT + "/analytics/statistics/geo-photos";
+export const ALBUM_PHOTOS_STATISTICS = BASE_API_ENDPOINT + "/analytics/statistics/album-photos";
 // Common
 export const GET_FILTERS = BASE_API_ENDPOINT + "/filters/asset-filters";
 
@@ -71,3 +82,5 @@ export const SHARE_LINK_ASSETS_PATH = (token: string) => BASE_API_ENDPOINT + "/s
 export const SHARE_LINK_PEOPLE_PATH = (token: string) => BASE_API_ENDPOINT + "/share-link/" + token + "/people";
 export const SHARE_LINK_DOWNLOAD_PATH = (token: string) => BASE_API_ENDPOINT + "/share-link/" + token + "/download";
 export const DOWNLOAD_ASSETS_PATH = BASE_PROXY_ENDPOINT + "/download/archive";
+
+export const LIST_DUPLICATES_PATH = BASE_PROXY_ENDPOINT + "/duplicates";

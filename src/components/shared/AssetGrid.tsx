@@ -1,12 +1,14 @@
 import "yet-another-react-lightbox/styles.css";
 
 import { IAsset } from '@/types/asset';
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react'
 import Lightbox from 'yet-another-react-lightbox';
 import { Gallery } from "react-grid-gallery";
 import LazyGridImage from "../ui/lazy-grid-image";
 import Download from "yet-another-react-lightbox/plugins/download";
 import Video from "yet-another-react-lightbox/plugins/video";
+import { usePhotoSelectionContext } from '@/contexts/PhotoSelectionContext';
+import { useConfig } from '@/contexts/ConfigContext';
 
 
 interface AssetGridProps {
@@ -16,10 +18,31 @@ interface AssetGridProps {
   onSelectionChange?: (ids: string[]) => void;
 }
 
-export default function AssetGrid({ assets, isInternal = true, selectable = false, onSelectionChange }: AssetGridProps) {
+interface AssetGridRef {
+  getSelectedIds: () => string[];
+  selectAll: () => void;
+  unselectAll: () => void;
+}
+
+const AssetGrid = forwardRef<AssetGridRef, AssetGridProps>(({ assets, isInternal = true, selectable = false, onSelectionChange }, ref) => {
   const [index, setIndex] = useState(-1);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [lastSelectedIndex, setLastSelectedIndex] = useState(-1);
+  const { exImmichUrl } = useConfig();
+  // Use context for selection state
+  const { selectedIds, updateContext } = usePhotoSelectionContext();
+
+  useImperativeHandle(ref, () => ({
+    getSelectedIds: () => selectedIds,
+    selectAll: () => {
+      const allIds = assets.map((asset) => asset.id);
+      updateContext({ selectedIds: allIds });
+      onSelectionChange?.(allIds);
+    },
+    unselectAll: () => {
+      updateContext({ selectedIds: [] });
+      onSelectionChange?.([]);
+    },
+  }), [assets, selectedIds, updateContext]);
 
 
   const handleClick = (index: number, asset: IAsset, event: React.MouseEvent<HTMLElement>) => {
@@ -35,8 +58,9 @@ export default function AssetGrid({ assets, isInternal = true, selectable = fals
     event.stopPropagation();
     const isPresent = selectedIds.includes(asset.id);
     if (isPresent) {
-      setSelectedIds(selectedIds.filter((id) => id !== asset.id));
-      onSelectionChange?.(selectedIds.filter((id) => id !== asset.id));
+      const newSelectedIds = selectedIds.filter((id) => id !== asset.id);
+      updateContext({ selectedIds: newSelectedIds });
+      onSelectionChange?.(newSelectedIds);
     } else {
       const clickedIndex = images.findIndex((image) => {
         return image.id === asset.id;
@@ -44,14 +68,15 @@ export default function AssetGrid({ assets, isInternal = true, selectable = fals
       if (event.shiftKey) {
         const startIndex = Math.min(clickedIndex, lastSelectedIndex);
         const endIndex = Math.max(clickedIndex, lastSelectedIndex);
-        const newSelectedIds = images.slice(startIndex, endIndex + 1).map((image) => image.id);
-        const allSelectedIds = [...selectedIds, ...newSelectedIds];
+        const rangeSelectedIds = images.slice(startIndex, endIndex + 1).map((image) => image.id);
+        const allSelectedIds = [...selectedIds, ...rangeSelectedIds];
         const uniqueSelectedIds = [...new Set(allSelectedIds)];
-        setSelectedIds(uniqueSelectedIds);
+        updateContext({ selectedIds: uniqueSelectedIds });
         onSelectionChange?.(uniqueSelectedIds);
       } else {
-        setSelectedIds([...selectedIds, asset.id]);
-        onSelectionChange?.([...selectedIds, asset.id]);
+        const newSelectedIds = [...selectedIds, asset.id];
+        updateContext({ selectedIds: newSelectedIds });
+        onSelectionChange?.(newSelectedIds);
       }
       setLastSelectedIndex(clickedIndex);
     }
@@ -88,12 +113,22 @@ export default function AssetGrid({ assets, isInternal = true, selectable = fals
       orientation: 1,
       isSelected: selectedIds.includes(p.id),
       isVideo: p.type === "VIDEO",
+      tags: [
+        {
+          title: "Immich Link",
+          value: (
+            <a href={exImmichUrl + "/photos/" + p.id} target="_blank" rel="noopener noreferrer">
+              Open in Immich
+            </a>
+          ),
+        },
+      ],
     }));
-  }, [assets, selectedIds]);
+  }, [assets, selectedIds, exImmichUrl]);
 
   const handleEsc = (event: KeyboardEvent) => {
     if (event.key === "Escape") {
-      setSelectedIds([]);
+      updateContext({ selectedIds: [] });
       onSelectionChange?.([]);
     }
   };
@@ -122,4 +157,6 @@ export default function AssetGrid({ assets, isInternal = true, selectable = fals
       />
     </div>
   );
-}
+})
+AssetGrid.displayName = "AssetGrid";
+export default AssetGrid;

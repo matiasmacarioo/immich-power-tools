@@ -61,10 +61,11 @@ DB_PORT = "5432"
 DB_HOST = "immich_postgres"
 
 # Optional
-GOOGLE_MAPS_API_KEY= # Google Maps API Key
 GEMINI_API_KEY= # Gemini API Key
 ```
 Refer here for obtaining Immich API Key: https://immich.app/docs/features/command-line-interface#obtain-the-api-key
+
+> [!NOTE] When creating the API key, make sure you select all the permissions for the API key.  
 
 #### Method 2 - Portainer
 
