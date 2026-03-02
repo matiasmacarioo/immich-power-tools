@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
 
-  const dbAssets = await db.select({
+const dbAssets = await db.select({
     assetId: assets.id,
     latitude: exif.latitude,
     longitude: exif.longitude,
