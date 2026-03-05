@@ -41,7 +41,7 @@ services:
   # Other services...
   power-tools:
     container_name: immich_power_tools
-    image: ghcr.io/varun-raj/immich-power-tools:latest
+    image: ghcr.io/immich-power-tools/immich-power-tools:latest
     ports:
       - "8001:3000"
     env_file:
