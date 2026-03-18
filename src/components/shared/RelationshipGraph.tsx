@@ -275,7 +275,35 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
 
     normalizedEdges.forEach((edge) => {
       if (edge.label === 'Parent' || edge.label === 'Step-Parent') {
-        dagreGraph.setEdge(edge.source, edge.target);
+        dagreGraph.setEdge(edge.source, edge.target, { weight: 2 });
+      }
+    });
+
+    const proxyByParent = new Map<string, string>();
+
+    normalizedEdges.forEach((edge) => {
+      if (edge.label === 'Spouse') {
+         const dummyId = `proxy_marriage_${edge.source}_${edge.target}`;
+         // 0 width/height proxy node mathematically situated explicitly on the identical rank (minlen 0)
+         dagreGraph.setNode(dummyId, { width: 1, height: 1 });
+         dagreGraph.setEdge(edge.source, dummyId, { weight: 100, minlen: 0 });
+         dagreGraph.setEdge(edge.target, dummyId, { weight: 100, minlen: 0 });
+
+         proxyByParent.set(edge.source, dummyId);
+         proxyByParent.set(edge.target, dummyId);
+      }
+    });
+
+    normalizedEdges.forEach((edge) => {
+      if (edge.label === 'Parent' || edge.label === 'Step-Parent') {
+        const proxyId = proxyByParent.get(edge.source);
+        if (proxyId) {
+           // Route the mathematical child layout through the shared marriage proxy.
+           // This guarantees the spouses act as a solitary centered anchor directly above ALL their cumulative subtrees.
+           dagreGraph.setEdge(proxyId, edge.target, { weight: 2, minlen: 1 });
+        } else {
+           dagreGraph.setEdge(edge.source, edge.target, { weight: 2, minlen: 1 });
+        }
       }
     });
 
