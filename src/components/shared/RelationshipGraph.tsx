@@ -19,57 +19,6 @@ interface RelationshipGraphProps {
 const nodeWidth = 220;
 const nodeHeight = 60;
 
-// Custom edge to handle rendering inference suggestions cleanly
-const ImplicitEdge = ({
-  id,
-  sourceX,
-  sourceY,
-  targetX,
-  targetY,
-  sourcePosition,
-  targetPosition,
-  style = {},
-  markerEnd,
-  data
-}: any) => {
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
-    sourceX,
-    sourceY,
-    sourcePosition,
-    targetPosition,
-    targetX,
-    targetY,
-  });
-
-  return (
-    <>
-      <BaseEdge path={edgePath} markerEnd={markerEnd} style={{ ...style, zIndex: 100 }} />
-      <EdgeLabelRenderer>
-        <div
-          style={{
-            position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-            pointerEvents: 'all',
-            zIndex: 1000,
-          }}
-          className="flex items-center justify-center nodrag nopan"
-        >
-          <div
-            className="bg-green-500/30 hover:bg-green-500 border border-green-500 text-white rounded-full p-1 cursor-pointer shadow-md transition-all hover:scale-125 flex items-center justify-center w-7 h-7"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (data?.onAccept) data.onAccept(data);
-            }}
-            title={data?.tooltipText || "Accept implicit relationship"}
-          >
-            <Check size={16} className="text-green-700 dark:text-green-300 hover:text-white" />
-          </div>
-        </div>
-      </EdgeLabelRenderer>
-    </>
-  );
-};
-
 // Custom node featuring robust visual handles
 const PersonNode = ({ id, data }: any) => {
 
@@ -108,10 +57,6 @@ const PersonNode = ({ id, data }: any) => {
 
 const nodeTypes = {
   person: PersonNode,
-};
-
-const edgeTypes = {
-  implicitEdge: ImplicitEdge,
 };
 
 export default function RelationshipGraph({ relationships, people, onAddVisual }: RelationshipGraphProps) {
@@ -197,15 +142,45 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
     return Array.from(siblings);
   }, [relationships, getParents, getChildren]);
 
-  const { initialNodes, initialEdges } = useMemo(() => {
+  const { initialNodes, initialEdges, suggestions } = useMemo(() => {
     const dagreGraph = new dagre.graphlib.Graph();
     dagreGraph.setDefaultEdgeLabel(() => ({}));
     dagreGraph.setGraph({ rankdir: 'TB', ranksep: 120, nodesep: 150 });
 
     const rawNodesMap: Record<string, Node> = {};
     const normalizedEdges = new Map<string, Edge>();
+    const suggestionsTemp: any[] = [];
 
-    const addCleanEdge = (source: string, target: string, type: string, isImplicit = false, realId: string | null = null) => {
+    const addSuggestion = (source: string, target: string, type: string) => {
+        let finalSource = source;
+        let finalTarget = target;
+        if (['Sibling', 'Spouse', 'Friend', 'Cousin', 'Step-Sibling'].includes(type)) {
+            if (source > target) {
+                finalSource = target;
+                finalTarget = source;
+            }
+        } else if (type === 'Child' || type === 'Step-Child') {
+            finalSource = target;
+            finalTarget = source;
+            type = type === 'Child' ? 'Parent' : 'Step-Parent';
+        }
+        
+        const key = `${finalSource}-${finalTarget}`;
+        if (!normalizedEdges.has(key) && !suggestionsTemp.some(s => s.key === key)) {
+            suggestionsTemp.push({
+                key,
+                sourceId: finalSource,
+                targetId: finalTarget,
+                label: type,
+                sourceName: peopleMap[finalSource]?.name || 'Unknown',
+                targetName: peopleMap[finalTarget]?.name || 'Unknown',
+                sourceImage: peopleMap[finalSource]?.thumbnailPath || '',
+                targetImage: peopleMap[finalTarget]?.thumbnailPath || '',
+            });
+        }
+    };
+
+    const addCleanEdge = (source: string, target: string, type: string, realId: string | null = null) => {
       let finalSource = source;
       let finalTarget = target;
       let finalLabel = type;
@@ -222,16 +197,6 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
       }
 
       const key = `${finalSource}-${finalTarget}`;
-      
-      const sourceName = peopleMap[finalSource]?.name || 'Unknown';
-      const targetName = peopleMap[finalTarget]?.name || 'Unknown';
-      let tooltipText = `Accept ${finalLabel} relationship`;
-      
-      if (finalLabel === 'Parent' || finalLabel === 'Step-Parent') {
-        tooltipText = `Click to formally save ${sourceName} as the ${finalLabel} of ${targetName}`;
-      } else {
-        tooltipText = `Click to formally link ${sourceName} and ${targetName} as ${finalLabel}s`;
-      }
 
       if (!normalizedEdges.has(key)) {
          normalizedEdges.set(key, {
@@ -244,26 +209,16 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
              sourceId: finalSource,
              targetId: finalTarget,
              label: finalLabel,
-             tooltipText,
-             onAccept: handleAcceptImplicit
            },
-           type: isImplicit ? 'implicitEdge' : 'smoothstep',
+           type: 'smoothstep',
            markerEnd: {
              type: MarkerType.ArrowClosed,
              width: 15,
              height: 15,
            },
-           animated: isImplicit,
-           style: isImplicit ? { strokeDasharray: '5,5' } : undefined,
          });
-      } else if (!isImplicit) {
+      } else {
          const existing = normalizedEdges.get(key)!;
-         if (existing.animated) {
-            existing.animated = false;
-            existing.type = 'smoothstep';
-            existing.style = undefined;
-            existing.label = finalLabel;
-         }
          existing.data = { ...existing.data, realId };
       }
     };
@@ -281,7 +236,7 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
           };
         }
       });
-      addCleanEdge(rel.person1Id, rel.person2Id, rel.relationshipType, false, rel.id);
+      addCleanEdge(rel.person1Id, rel.person2Id, rel.relationshipType, rel.id);
     });
 
     const nodesArr = Object.values(rawNodesMap);
@@ -295,7 +250,7 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
        parentsA.forEach(pA => {
            getChildren(pA).forEach(bId => {
                if (aId !== bId) {
-                  addCleanEdge(aId, bId, 'Sibling', true);
+                  addSuggestion(aId, bId, 'Sibling');
                }
            });
        });
@@ -307,27 +262,9 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
                const childrenS = getChildren(sP);
                childrenS.forEach(bId => {
                    if (aId !== bId) {
-                      addCleanEdge(aId, bId, 'Cousin', true);
+                      addSuggestion(aId, bId, 'Cousin');
                    }
                });
-           });
-       });
-
-       // Infer step-relations
-       parentsA.forEach(pA => {
-           const spousesP = getSpouses(pA);
-           spousesP.forEach(stepP => {
-               if (!parentsA.includes(stepP)) {
-                  addCleanEdge(stepP, aId, 'Step-Parent', true);
-                  
-                  const stepSiblings = getChildren(stepP);
-                  const mySiblings = getSiblings(aId);
-                  stepSiblings.forEach(stepSib => {
-                      if (stepSib !== aId && !mySiblings.includes(stepSib)) {
-                          addCleanEdge(aId, stepSib, 'Step-Sibling', true);
-                      }
-                  });
-               }
            });
        });
     });
@@ -379,8 +316,8 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
       return edge;
     });
 
-    return { initialNodes: layoutedNodes, initialEdges: layoutedEdges };
-  }, [relationships, peopleMap, getParents, getChildren, getSiblings, getSpouses, handleAddRelationClick]);
+    return { initialNodes: layoutedNodes, initialEdges: layoutedEdges, suggestions: suggestionsTemp };
+  }, [relationships, peopleMap, getParents, getChildren, getSiblings, getSpouses]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -410,19 +347,10 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
       const targetParents = getParents(params.target);
       const shareParent = sourceParents.some(p => targetParents.includes(p));
 
-      let isStepSibling = false;
-      sourceParents.forEach(sp => {
-         getSpouses(sp).forEach(spouse => {
-            if (targetParents.includes(spouse)) isStepSibling = true;
-         });
-      });
-
       if (shareChild) {
         relType = 'Spouse';
       } else if (shareParent) {
         relType = 'Sibling';
-      } else if (isStepSibling) {
-        relType = 'Step-Sibling';
       } else if (sourceChildren.length > 0 || targetChildren.length > 0) {
         relType = 'Spouse'; 
       } else {
@@ -519,15 +447,13 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
   const onNodeMouseEnter = useCallback((_: React.MouseEvent, node: Node) => {
     setEdges((eds) => eds.map((ed) => {
       const isConnected = ed.source === node.id || ed.target === node.id;
-      const isImplicit = ed.type === 'implicitEdge';
       return {
         ...ed,
-        animated: isConnected ? true : isImplicit,
+        animated: isConnected,
         style: {
           strokeWidth: isConnected ? 3 : 1,
-          stroke: isConnected ? (isImplicit ? '#10b981' : '#3b82f6') : undefined,
+          stroke: isConnected ? '#3b82f6' : undefined,
           opacity: isConnected ? 1 : 0.2,
-          strokeDasharray: isImplicit ? '5,5' : undefined,
           transition: 'stroke-width 0.2s, stroke 0.2s, opacity 0.2s',
         },
       };
@@ -551,12 +477,10 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
 
   const onNodeMouseLeave = useCallback(() => {
     setEdges((eds) => eds.map((ed) => {
-      const isImplicit = ed.type === 'implicitEdge';
       return {
         ...ed,
-        animated: isImplicit,
+        animated: false,
         style: {
-           strokeDasharray: isImplicit ? '5,5' : undefined,
            transition: 'stroke-width 0.2s, stroke 0.2s, opacity 0.2s',
         },
       };
@@ -581,7 +505,6 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
         onNodeMouseEnter={onNodeMouseEnter}
         onNodeMouseLeave={onNodeMouseLeave}
         nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
         fitView
         onConnect={handleConnect}
         onEdgeContextMenu={handleEdgeContextMenu}
@@ -591,6 +514,31 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
         <MiniMap />
         <Background gap={12} size={1} />
       </ReactFlow>
+
+      {suggestions.length > 0 && (
+         <div className="absolute top-4 right-4 z-50 bg-card/95 backdrop-blur-sm border rounded-lg shadow-lg w-80 max-h-[80vh] flex flex-col pointer-events-auto">
+            <div className="p-3 border-b font-semibold bg-muted/50 rounded-t-lg">Suggested Relationships</div>
+            <div className="flex flex-col p-2 gap-2 overflow-y-auto">
+               {suggestions.map(s => (
+                  <div key={s.key} className="flex items-center justify-between text-sm p-2 rounded-md hover:bg-muted/50 border border-transparent hover:border-border transition-all group">
+                      <div className="flex items-center gap-3">
+                         <div className="flex -space-x-3">
+                            {s.sourceImage ? <img src={s.sourceImage} className="w-8 h-8 rounded-full object-cover border-2 border-card" /> : <div className="w-8 h-8 rounded-full bg-muted border-2 border-card flex items-center justify-center text-[10px]">?</div>}
+                            {s.targetImage ? <img src={s.targetImage} className="w-8 h-8 rounded-full object-cover border-2 border-card" /> : <div className="w-8 h-8 rounded-full bg-muted border-2 border-card flex items-center justify-center text-[10px]">?</div>}
+                         </div>
+                         <div className="flex flex-col">
+                            <span className="font-semibold leading-none">{s.label}</span>
+                            <span className="text-xs text-muted-foreground">{s.sourceName} & {s.targetName}</span>
+                         </div>
+                      </div>
+                      <Button size="icon" variant="ghost" onClick={() => handleAcceptImplicit(s)} className="h-8 w-8 text-green-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-500/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                         <Check size={16} />
+                      </Button>
+                  </div>
+               ))}
+            </div>
+         </div>
+      )}
 
       <Dialog open={!!addingRelation} onOpenChange={(open) => !open && setAddingRelation(null)}>
         <DialogContent className="max-w-md !p-6">
