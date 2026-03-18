@@ -17,6 +17,11 @@ export const sidebarNavs = [
     icon: <User className="h-4 w-4" />,
   },
   {
+    title: "Relationship Tree",
+    link: "/people/relationship-tree",
+    icon: <GalleryHorizontal className="h-4 w-4" />,
+  },
+  {
     title: "Analytics",
     link: "/analytics/exif",
     icon: <ImageIcon className="h-4 w-4" />,

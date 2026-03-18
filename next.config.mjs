@@ -9,6 +9,9 @@ const nextConfig = {
   env: {
     VERSION: process.env.VERSION,
   },
+  experimental: {
+    serverComponentsExternalPackages: ["better-sqlite3", "dagre"]
+  }
 };
 
 export default nextConfig;
