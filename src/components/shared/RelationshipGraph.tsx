@@ -73,10 +73,10 @@ const ImplicitEdge = ({
 // Custom node featuring robust visual handles
 const PersonNode = ({ id, data }: any) => {
 
-  const handleClick = (e: React.MouseEvent, type: string) => {
+  const handleClick = (e: React.MouseEvent, type: string, category: string) => {
     e.stopPropagation();
     if (data.onAddRelationClick) {
-      data.onAddRelationClick({ personId: id, relType: type, personName: data.label });
+      data.onAddRelationClick({ personId: id, relType: type, category, personName: data.label });
     }
   };
 
@@ -89,10 +89,10 @@ const PersonNode = ({ id, data }: any) => {
       <Handle type="target" position={Position.Right} id="t-right" className="w-3 h-3 bg-transparent border-transparent" />
 
       {/* Source handles */}
-      <Handle type="source" position={Position.Top} id="s-top" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Parent')} />
-      <Handle type="source" position={Position.Bottom} id="s-bottom" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Child')} />
-      <Handle type="source" position={Position.Left} id="s-left" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Side')} />
-      <Handle type="source" position={Position.Right} id="s-right" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Side')} />
+      <Handle type="source" position={Position.Top} id="s-top" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Parent', 'Top')} />
+      <Handle type="source" position={Position.Bottom} id="s-bottom" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Child', 'Bottom')} />
+      <Handle type="source" position={Position.Left} id="s-left" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Side', 'Side')} />
+      <Handle type="source" position={Position.Right} id="s-right" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Side', 'Side')} />
 
       {data.imageUrl ? (
         <img src={data.imageUrl} alt={data.label} className="w-10 h-10 rounded-full object-cover bg-muted flex-shrink-0" />
@@ -117,8 +117,9 @@ const edgeTypes = {
 export default function RelationshipGraph({ relationships, people, onAddVisual }: RelationshipGraphProps) {
   const { theme } = useTheme();
   
-  const [addingRelation, setAddingRelation] = useState<{ personId: string, relType: string, personName: string } | null>(null);
+  const [addingRelation, setAddingRelation] = useState<{ personId: string, relType: string, category: string, personName: string } | null>(null);
   const [selectedPersonForAdd, setSelectedPersonForAdd] = useState<string[]>([]);
+  const [selectedRelType, setSelectedRelType] = useState<string>('');
 
   const handleAcceptImplicit = useCallback(async (edgeData: any) => {
     try {
@@ -149,6 +150,7 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
       type = isParent ? 'Spouse' : 'Sibling';
     }
     setAddingRelation({ ...info, relType: type });
+    setSelectedRelType(type);
     setSelectedPersonForAdd([]);
   }, [relationships]);
 
@@ -159,6 +161,41 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
     });
     return map;
   }, [people]);
+
+  const getParents = useCallback((personId: string) => {
+    return relationships.filter(r => r.relationshipType === 'Parent' && r.person2Id === personId).map(r => r.person1Id);
+  }, [relationships]);
+
+  const getChildren = useCallback((personId: string) => {
+    return relationships.filter(r => r.relationshipType === 'Parent' && r.person1Id === personId).map(r => r.person2Id);
+  }, [relationships]);
+
+  const getSpouses = useCallback((personId: string) => {
+    const spouses = new Set<string>();
+    relationships.filter(r => r.relationshipType === 'Spouse' && r.person1Id === personId).forEach(r => spouses.add(r.person2Id));
+    relationships.filter(r => r.relationshipType === 'Spouse' && r.person2Id === personId).forEach(r => spouses.add(r.person1Id));
+    const children = getChildren(personId);
+    children.forEach(child => {
+        const coParents = getParents(child);
+        coParents.forEach(cp => {
+            if (cp !== personId) spouses.add(cp);
+        });
+    });
+    return Array.from(spouses);
+  }, [relationships, getChildren, getParents]);
+
+  const getSiblings = useCallback((personId: string) => {
+    const parents = getParents(personId);
+    const siblings = new Set<string>();
+    parents.forEach(p => {
+      getChildren(p).forEach(c => {
+          if (c !== personId) siblings.add(c);
+      });
+    });
+    relationships.filter(r => r.relationshipType === 'Sibling' && r.person1Id === personId).forEach(r => siblings.add(r.person2Id));
+    relationships.filter(r => r.relationshipType === 'Sibling' && r.person2Id === personId).forEach(r => siblings.add(r.person1Id));
+    return Array.from(siblings);
+  }, [relationships, getParents, getChildren]);
 
   const { initialNodes, initialEdges } = useMemo(() => {
     const dagreGraph = new dagre.graphlib.Graph();
@@ -173,11 +210,11 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
       let finalTarget = target;
       let finalLabel = type;
 
-      if (type === 'Child') {
+      if (type === 'Child' || type === 'Step-Child') {
         finalSource = target;
         finalTarget = source;
-        finalLabel = 'Parent';
-      } else if (['Sibling', 'Spouse', 'Friend', 'Cousin'].includes(type)) {
+        finalLabel = type === 'Child' ? 'Parent' : 'Step-Parent';
+      } else if (['Sibling', 'Spouse', 'Friend', 'Cousin', 'Step-Sibling'].includes(type)) {
         if (source > target) {
           finalSource = target;
           finalTarget = source;
@@ -190,8 +227,8 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
       const targetName = peopleMap[finalTarget]?.name || 'Unknown';
       let tooltipText = `Accept ${finalLabel} relationship`;
       
-      if (finalLabel === 'Parent') {
-        tooltipText = `Click to formally save ${sourceName} as the Parent of ${targetName}`;
+      if (finalLabel === 'Parent' || finalLabel === 'Step-Parent') {
+        tooltipText = `Click to formally save ${sourceName} as the ${finalLabel} of ${targetName}`;
       } else {
         tooltipText = `Click to formally link ${sourceName} and ${targetName} as ${finalLabel}s`;
       }
@@ -247,40 +284,6 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
       addCleanEdge(rel.person1Id, rel.person2Id, rel.relationshipType, false, rel.id);
     });
 
-    const getParents = (personId: string) => {
-      return relationships.filter(r => r.relationshipType === 'Parent' && r.person2Id === personId).map(r => r.person1Id);
-    };
-    const getChildren = (personId: string) => {
-      return relationships.filter(r => r.relationshipType === 'Parent' && r.person1Id === personId).map(r => r.person2Id);
-    };
-    const getSiblings = (personId: string) => {
-       const parents = getParents(personId);
-       const siblings = new Set<string>();
-       parents.forEach(p => {
-          getChildren(p).forEach(c => {
-             if (c !== personId) siblings.add(c);
-          });
-       });
-       relationships.filter(r => r.relationshipType === 'Sibling' && r.person1Id === personId).forEach(r => siblings.add(r.person2Id));
-       relationships.filter(r => r.relationshipType === 'Sibling' && r.person2Id === personId).forEach(r => siblings.add(r.person1Id));
-       return Array.from(siblings);
-    };
-
-    const currentEdges = Array.from(normalizedEdges.values());
-    currentEdges.forEach((e1) => {
-      if (e1.label === 'Parent') {
-        currentEdges.forEach((e2) => {
-           if (e2.label === 'Sibling') {
-             if (e2.source === e1.target) {
-               addCleanEdge(e1.source, e2.target, 'Parent', true);
-             } else if (e2.target === e1.target) {
-               addCleanEdge(e1.source, e2.source, 'Parent', true);
-             }
-           }
-        });
-      }
-    });
-
     const nodesArr = Object.values(rawNodesMap);
 
     // Advanced Inferences
@@ -309,6 +312,24 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
                });
            });
        });
+
+       // Infer step-relations
+       parentsA.forEach(pA => {
+           const spousesP = getSpouses(pA);
+           spousesP.forEach(stepP => {
+               if (!parentsA.includes(stepP)) {
+                  addCleanEdge(stepP, aId, 'Step-Parent', true);
+                  
+                  const stepSiblings = getChildren(stepP);
+                  const mySiblings = getSiblings(aId);
+                  stepSiblings.forEach(stepSib => {
+                      if (stepSib !== aId && !mySiblings.includes(stepSib)) {
+                          addCleanEdge(aId, stepSib, 'Step-Sibling', true);
+                      }
+                  });
+               }
+           });
+       });
     });
 
     nodesArr.forEach((node) => {
@@ -316,7 +337,7 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
     });
 
     normalizedEdges.forEach((edge) => {
-      if (edge.label === 'Parent') {
+      if (edge.label === 'Parent' || edge.label === 'Step-Parent') {
         dagreGraph.setEdge(edge.source, edge.target);
       }
     });
@@ -338,7 +359,7 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
 
     // Remap handles dynamically based on actual positions
     const layoutedEdges = Array.from(normalizedEdges.values()).map((edge) => {
-      if (['Sibling', 'Spouse', 'Friend', 'Cousin'].includes(edge.label as string)) {
+      if (['Sibling', 'Spouse', 'Friend', 'Cousin', 'Step-Sibling'].includes(edge.label as string)) {
         const sourceNode = dagreGraph.node(edge.source);
         const targetNode = dagreGraph.node(edge.target);
         if (sourceNode && targetNode) {
@@ -359,7 +380,7 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
     });
 
     return { initialNodes: layoutedNodes, initialEdges: layoutedEdges };
-  }, [relationships, peopleMap, handleAddRelationClick]);
+  }, [relationships, peopleMap, getParents, getChildren, getSiblings, getSpouses, handleAddRelationClick]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -381,18 +402,27 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
     } else if (params.sourceHandle === 's-top') {
       relType = 'Child'; 
     } else if (params.sourceHandle === 's-left' || params.sourceHandle === 's-right') {
-      const sourceChildren = relationships.filter(r => r.relationshipType === 'Parent' && r.person1Id === params.source).map(r => r.person2Id);
-      const targetChildren = relationships.filter(r => r.relationshipType === 'Parent' && r.person1Id === params.target).map(r => r.person2Id);
+      const sourceChildren = getChildren(params.source);
+      const targetChildren = getChildren(params.target);
       const shareChild = sourceChildren.some(c => targetChildren.includes(c));
 
-      const sourceParents = relationships.filter(r => r.relationshipType === 'Parent' && r.person2Id === params.source).map(r => r.person1Id);
-      const targetParents = relationships.filter(r => r.relationshipType === 'Parent' && r.person2Id === params.target).map(r => r.person1Id);
+      const sourceParents = getParents(params.source);
+      const targetParents = getParents(params.target);
       const shareParent = sourceParents.some(p => targetParents.includes(p));
+
+      let isStepSibling = false;
+      sourceParents.forEach(sp => {
+         getSpouses(sp).forEach(spouse => {
+            if (targetParents.includes(spouse)) isStepSibling = true;
+         });
+      });
 
       if (shareChild) {
         relType = 'Spouse';
       } else if (shareParent) {
         relType = 'Sibling';
+      } else if (isStepSibling) {
+        relType = 'Step-Sibling';
       } else if (sourceChildren.length > 0 || targetChildren.length > 0) {
         relType = 'Spouse'; 
       } else {
@@ -451,18 +481,17 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
 
     let p1 = addingRelation.personId;
     let p2 = selectedPersonForAdd[0];
-    let rType = addingRelation.relType;
+    let rType = selectedRelType;
 
-    if (addingRelation.relType === 'Parent') {
+    if (['Parent', 'Step-Parent'].includes(selectedRelType)) {
       // The new person (p2) is the parent of the current person (p1)
       p1 = selectedPersonForAdd[0];
       p2 = addingRelation.personId;
-      rType = 'Parent';
-    } else if (addingRelation.relType === 'Child') {
+    } else if (['Child', 'Step-Child'].includes(selectedRelType)) {
       // The current person (p1) is the parent of the new person (p2)
       p1 = addingRelation.personId;
       p2 = selectedPersonForAdd[0];
-      rType = 'Parent';
+      rType = selectedRelType === 'Child' ? 'Parent' : 'Step-Parent';
     }
 
     try {
@@ -566,11 +595,47 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
       <Dialog open={!!addingRelation} onOpenChange={(open) => !open && setAddingRelation(null)}>
         <DialogContent className="max-w-md !p-6">
           <DialogHeader>
-            <DialogTitle>Add {addingRelation?.relType} for {addingRelation?.personName}</DialogTitle>
-            <DialogDescription>Search for a person to assign this relationship.</DialogDescription>
+            <DialogTitle>Add Relationship for {addingRelation?.personName}</DialogTitle>
+            <DialogDescription>Select the relationship type and search for a person.</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-4 py-4 mt-2">
-            <PeopleDropdown onChange={(ids) => setSelectedPersonForAdd(ids)} peopleIds={selectedPersonForAdd} />
+            <div className="flex flex-col gap-2">
+               <label className="text-sm font-medium">Relationship Type</label>
+               <select 
+                 value={selectedRelType} 
+                 onChange={(e) => setSelectedRelType(e.target.value)}
+                 className="w-full border rounded-md p-2 bg-background cursor-pointer"
+               >
+                 {addingRelation?.category === 'Top' && (
+                    <>
+                      <option value="Parent">Parent</option>
+                      <option value="Step-Parent">Step-Parent</option>
+                    </>
+                 )}
+                 {addingRelation?.category === 'Bottom' && (
+                    <>
+                      <option value="Child">Child</option>
+                      <option value="Step-Child">Step-Child</option>
+                    </>
+                 )}
+                 {addingRelation?.category === 'Side' && (
+                    <>
+                      <option value="Sibling">Sibling</option>
+                      <option value="Step-Sibling">Step-Sibling</option>
+                      <option value="Half-Sibling">Half-Sibling</option>
+                      <option value="Spouse">Spouse</option>
+                      <option value="Cousin">Cousin</option>
+                      <option value="Friend">Friend</option>
+                    </>
+                 )}
+               </select>
+            </div>
+            
+            <div className="flex flex-col gap-2">
+               <label className="text-sm font-medium">Select Person</label>
+               <PeopleDropdown onChange={(ids) => setSelectedPersonForAdd(ids)} peopleIds={selectedPersonForAdd} />
+            </div>
+
             <Button 
               className="mt-4"
               disabled={selectedPersonForAdd.length === 0} 
