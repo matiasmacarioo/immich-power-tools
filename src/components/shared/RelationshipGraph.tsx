@@ -177,7 +177,7 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
         finalSource = target;
         finalTarget = source;
         finalLabel = 'Parent';
-      } else if (['Sibling', 'Spouse', 'Friend'].includes(type)) {
+      } else if (['Sibling', 'Spouse', 'Friend', 'Cousin'].includes(type)) {
         if (source > target) {
           finalSource = target;
           finalTarget = source;
@@ -247,6 +247,25 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
       addCleanEdge(rel.person1Id, rel.person2Id, rel.relationshipType, false, rel.id);
     });
 
+    const getParents = (personId: string) => {
+      return relationships.filter(r => r.relationshipType === 'Parent' && r.person2Id === personId).map(r => r.person1Id);
+    };
+    const getChildren = (personId: string) => {
+      return relationships.filter(r => r.relationshipType === 'Parent' && r.person1Id === personId).map(r => r.person2Id);
+    };
+    const getSiblings = (personId: string) => {
+       const parents = getParents(personId);
+       const siblings = new Set<string>();
+       parents.forEach(p => {
+          getChildren(p).forEach(c => {
+             if (c !== personId) siblings.add(c);
+          });
+       });
+       relationships.filter(r => r.relationshipType === 'Sibling' && r.person1Id === personId).forEach(r => siblings.add(r.person2Id));
+       relationships.filter(r => r.relationshipType === 'Sibling' && r.person2Id === personId).forEach(r => siblings.add(r.person1Id));
+       return Array.from(siblings);
+    };
+
     const currentEdges = Array.from(normalizedEdges.values());
     currentEdges.forEach((e1) => {
       if (e1.label === 'Parent') {
@@ -263,6 +282,34 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
     });
 
     const nodesArr = Object.values(rawNodesMap);
+
+    // Advanced Inferences
+    nodesArr.forEach(nodeA => {
+       const aId = nodeA.id;
+       const parentsA = getParents(aId);
+       
+       // Infer siblings
+       parentsA.forEach(pA => {
+           getChildren(pA).forEach(bId => {
+               if (aId !== bId) {
+                  addCleanEdge(aId, bId, 'Sibling', true);
+               }
+           });
+       });
+
+       // Infer cousins
+       parentsA.forEach(pA => {
+           const siblingsP = getSiblings(pA);
+           siblingsP.forEach(sP => {
+               const childrenS = getChildren(sP);
+               childrenS.forEach(bId => {
+                   if (aId !== bId) {
+                      addCleanEdge(aId, bId, 'Cousin', true);
+                   }
+               });
+           });
+       });
+    });
 
     nodesArr.forEach((node) => {
       dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
@@ -291,7 +338,7 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
 
     // Remap handles dynamically based on actual positions
     const layoutedEdges = Array.from(normalizedEdges.values()).map((edge) => {
-      if (['Sibling', 'Spouse', 'Friend'].includes(edge.label as string)) {
+      if (['Sibling', 'Spouse', 'Friend', 'Cousin'].includes(edge.label as string)) {
         const sourceNode = dagreGraph.node(edge.source);
         const targetNode = dagreGraph.node(edge.target);
         if (sourceNode && targetNode) {
