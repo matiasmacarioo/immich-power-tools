@@ -440,6 +440,61 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
     }
   };
 
+  const onNodeMouseEnter = useCallback((_: React.MouseEvent, node: Node) => {
+    setEdges((eds) => eds.map((ed) => {
+      const isConnected = ed.source === node.id || ed.target === node.id;
+      const isImplicit = ed.type === 'implicitEdge';
+      return {
+        ...ed,
+        animated: isConnected ? true : isImplicit,
+        style: {
+          strokeWidth: isConnected ? 3 : 1,
+          stroke: isConnected ? (isImplicit ? '#10b981' : '#3b82f6') : undefined,
+          opacity: isConnected ? 1 : 0.2,
+          strokeDasharray: isImplicit ? '5,5' : undefined,
+          transition: 'stroke-width 0.2s, stroke 0.2s, opacity 0.2s',
+        },
+      };
+    }));
+    
+    setNodes((nds) => nds.map((n) => {
+      const isConnectedNode = n.id === node.id || initialEdges.some(e => 
+        (e.source === node.id && e.target === n.id) || 
+        (e.target === node.id && e.source === n.id)
+      );
+      return {
+        ...n,
+        style: {
+           ...n.style,
+           opacity: isConnectedNode ? 1 : 0.4,
+           transition: 'opacity 0.2s',
+        }
+      };
+    }));
+  }, [setEdges, setNodes, initialEdges]);
+
+  const onNodeMouseLeave = useCallback(() => {
+    setEdges((eds) => eds.map((ed) => {
+      const isImplicit = ed.type === 'implicitEdge';
+      return {
+        ...ed,
+        animated: isImplicit,
+        style: {
+           strokeDasharray: isImplicit ? '5,5' : undefined,
+           transition: 'stroke-width 0.2s, stroke 0.2s, opacity 0.2s',
+        },
+      };
+    }));
+    setNodes((nds) => nds.map((n) => ({
+      ...n,
+      style: {
+         ...n.style,
+         opacity: 1,
+         transition: 'opacity 0.2s',
+      }
+    })));
+  }, [setEdges, setNodes]);
+
   return (
     <div style={{ width: '100%', height: '100%' }}>
       <ReactFlow
@@ -447,6 +502,8 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeMouseEnter={onNodeMouseEnter}
+        onNodeMouseLeave={onNodeMouseLeave}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
