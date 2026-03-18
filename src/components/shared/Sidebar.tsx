@@ -1,4 +1,5 @@
 import Link from "next/link";
+import packageJson from "../../../package.json";
 
 import { sidebarNavs } from "@/config/constants/sidebarNavs";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ export default function Sidebar() {
               className="w-6 h-6"
             />
             <span className="">Immich Power Tools</span>
+            <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md font-mono ml-1">v{packageJson.version}</span>
           </Link>
           <ThemeSwitcher />
         </div>
