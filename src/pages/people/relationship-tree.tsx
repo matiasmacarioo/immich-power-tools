@@ -151,7 +151,7 @@ export default function RelationshipTree() {
       </div>
 
       <div className='flex-1 w-full relative min-h-[500px]'>
-        <RelationshipGraph relationships={relationships} people={people} />
+        <RelationshipGraph relationships={relationships} people={people} onAddVisual={fetchRelationships} />
       </div>
     </PageLayout>
   );
