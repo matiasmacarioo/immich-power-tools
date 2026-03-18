@@ -30,7 +30,7 @@ const PersonNode = ({ id, data }: any) => {
   };
 
   return (
-    <div className="flex items-center gap-3 bg-card border rounded-lg p-2 pr-4 shadow-sm w-[220px] relative">
+    <div className={`flex items-center gap-3 bg-card border p-2 pr-4 shadow-sm w-[220px] relative transition-all ${data.roundedClass || 'rounded-lg'}`}>
       {/* Target handles */}
       <Handle type="target" position={Position.Top} id="t-top" className="w-3 h-3 bg-transparent border-transparent" />
       <Handle type="target" position={Position.Bottom} id="t-bottom" className="w-3 h-3 bg-transparent border-transparent" />
@@ -58,7 +58,6 @@ const PersonNode = ({ id, data }: any) => {
 const nodeTypes = {
   person: PersonNode,
 };
-
 export default function RelationshipGraph({ relationships, people, onAddVisual }: RelationshipGraphProps) {
   const { theme } = useTheme();
   
@@ -145,7 +144,7 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
   const { initialNodes, initialEdges, suggestions } = useMemo(() => {
     const dagreGraph = new dagre.graphlib.Graph();
     dagreGraph.setDefaultEdgeLabel(() => ({}));
-    dagreGraph.setGraph({ rankdir: 'TB', ranksep: 120, nodesep: 150 });
+    dagreGraph.setGraph({ rankdir: 'TB', ranksep: 100, nodesep: 40, edgesep: 30 });
 
     const rawNodesMap: Record<string, Node> = {};
     const normalizedEdges = new Map<string, Edge>();
@@ -322,26 +321,96 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
 
     dagre.layout(dagreGraph);
 
-    const layoutedNodes = nodesArr.map((node) => {
-      const nodeWithPosition = dagreGraph.node(node.id) || { x: 0, y: 0 };
-      return {
-        ...node,
-        targetPosition: 'top',
-        sourcePosition: 'bottom',
-        position: {
-          x: nodeWithPosition.x - (nodeWidth / 2),
-          y: nodeWithPosition.y - (nodeHeight / 2),
-        },
-      } as Node;
+    const checkMates = (n1: string, n2: string) => {
+        const edge1 = normalizedEdges.get(`${n1}-${n2}`);
+        const edge2 = normalizedEdges.get(`${n2}-${n1}`);
+        // We only allow immediate nuclear family members natively on the same rank (Spouses and Siblings) to form Combined Cards.
+        // Allowing extended relations like Cousins causes separate sibling groups to glue together across family boundaries!
+        if (edge1 && ['Spouse', 'Sibling', 'Step-Sibling', 'Half-Sibling'].includes(edge1.label as string)) return true;
+        if (edge2 && ['Spouse', 'Sibling', 'Step-Sibling', 'Half-Sibling'].includes(edge2.label as string)) return true;
+
+        const p1 = getParents(n1);
+        const p2 = getParents(n2);
+        if (p1.length > 0 && p1.some(p => p2.includes(p))) return true;
+
+        return false;
+    };
+
+    const layoutedNodes: Node[] = [];
+    const ranks = new Map<number, Node[]>();
+    const yRanks: number[] = [];
+
+    nodesArr.forEach(node => {
+        const dNode = dagreGraph.node(node.id);
+        const y = dNode.y;
+        
+        // Dagre sometimes floats nodes vertically by sub-pixels.
+        // If we strictly round, they split into independent collision lanes resulting in total visual overlaps!
+        // This clusters nodes into the same computational collision-detection tier if they sit within 50px vertically.
+        let foundY = yRanks.find(ry => Math.abs(ry - y) < 50);
+        if (foundY === undefined) {
+            foundY = y;
+            yRanks.push(foundY);
+            ranks.set(foundY, []);
+        }
+        ranks.get(foundY)!.push(node);
+    });
+
+    Array.from(ranks.keys()).sort((a,b)=>a-b).forEach(y => {
+        const rankNodes = ranks.get(y)!;
+        rankNodes.sort((a,b) => dagreGraph.node(a.id).x - dagreGraph.node(b.id).x);
+
+        let currentX = dagreGraph.node(rankNodes[0].id).x - nodeWidth / 2;
+
+        for (let i = 0; i < rankNodes.length; i++) {
+           const node = rankNodes[i];
+           const nextNode = rankNodes[i+1];
+           
+           let isLinkedToNext = false;
+           if (nextNode && checkMates(node.id, nextNode.id)) {
+               const dNodeX = dagreGraph.node(node.id).x;
+               const dNextX = dagreGraph.node(nextNode.id).x;
+               // Dagre spaces adjacent siblings roughly nodeWidth + nodesep apart.
+               // We only snap horizontally if dagre positioned them relatively nearby natively.
+               if (dNextX - dNodeX < nodeWidth * 1.8) {
+                   isLinkedToNext = true;
+               }
+           }
+
+           const isLinkedToPrev = i > 0 && rankNodes[i-1].data.linkedToNext;
+
+           let roundedClass = 'rounded-lg';
+           if (isLinkedToPrev && isLinkedToNext) {
+               roundedClass = 'rounded-none border-x-0';
+           } else if (isLinkedToPrev && !isLinkedToNext) {
+               roundedClass = 'rounded-l-none rounded-r-lg border-l-0';
+           } else if (!isLinkedToPrev && isLinkedToNext) {
+               roundedClass = 'rounded-r-none rounded-l-lg border-r-0';
+           }
+
+           node.data = { ...node.data, roundedClass, linkedToNext: isLinkedToNext };
+
+           layoutedNodes.push({
+               ...node,
+               position: { x: currentX, y: y - nodeHeight / 2 }
+           });
+
+           if (isLinkedToNext) {
+               currentX += nodeWidth; // Instantly snap identically next to each other
+           } else if (nextNode) {
+               const nextOriginalX = dagreGraph.node(nextNode.id).x - nodeWidth / 2;
+               currentX = Math.max(currentX + nodeWidth + 40, nextOriginalX);
+           }
+        }
     });
 
     // Remap handles dynamically based on actual positions
     const layoutedEdges = Array.from(normalizedEdges.values()).map((edge) => {
       if (['Sibling', 'Spouse', 'Friend', 'Cousin', 'Step-Sibling'].includes(edge.label as string)) {
-        const sourceNode = dagreGraph.node(edge.source);
-        const targetNode = dagreGraph.node(edge.target);
+        const sourceNode = layoutedNodes.find(n => n.id === edge.source);
+        const targetNode = layoutedNodes.find(n => n.id === edge.target);
         if (sourceNode && targetNode) {
-          if (sourceNode.x < targetNode.x) {
+          if (sourceNode.position.x < targetNode.position.x) {
             edge.sourceHandle = 's-right';
             edge.targetHandle = 't-left';
           } else {
