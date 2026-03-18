@@ -1,5 +1,5 @@
-import React, { useMemo, useCallback, useState } from 'react';
-import { ReactFlow, Controls, Background, MiniMap, Node, Edge, Handle, Position, Connection, MarkerType } from '@xyflow/react';
+import React, { useMemo, useCallback, useState, useEffect } from 'react';
+import { ReactFlow, Controls, Background, MiniMap, Node, Edge, Handle, Position, Connection, MarkerType, BaseEdge, EdgeLabelRenderer, getSmoothStepPath, useNodesState, useEdgesState } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import dagre from 'dagre';
 import { IPerson } from '@/types/person';
@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import PeopleDropdown from './PeopleDropdown';
 import { Button } from '../ui/button';
+import { Check } from 'lucide-react';
 
 interface RelationshipGraphProps {
   relationships: any[];
@@ -17,6 +18,57 @@ interface RelationshipGraphProps {
 
 const nodeWidth = 220;
 const nodeHeight = 60;
+
+// Custom edge to handle rendering inference suggestions cleanly
+const ImplicitEdge = ({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  style = {},
+  markerEnd,
+  data
+}: any) => {
+  const [edgePath, labelX, labelY] = getSmoothStepPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetPosition,
+    targetX,
+    targetY,
+  });
+
+  return (
+    <>
+      <BaseEdge path={edgePath} markerEnd={markerEnd} style={{ ...style, zIndex: 100 }} />
+      <EdgeLabelRenderer>
+        <div
+          style={{
+            position: 'absolute',
+            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+            pointerEvents: 'all',
+            zIndex: 1000,
+          }}
+          className="flex items-center justify-center nodrag nopan"
+        >
+          <div
+            className="bg-green-500/30 hover:bg-green-500 border border-green-500 text-white rounded-full p-1 cursor-pointer shadow-md transition-all hover:scale-125 flex items-center justify-center w-7 h-7"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (data?.onAccept) data.onAccept(data);
+            }}
+            title={data?.tooltipText || "Accept implicit relationship"}
+          >
+            <Check size={16} className="text-green-700 dark:text-green-300 hover:text-white" />
+          </div>
+        </div>
+      </EdgeLabelRenderer>
+    </>
+  );
+};
 
 // Custom node featuring robust visual handles
 const PersonNode = ({ id, data }: any) => {
@@ -37,10 +89,10 @@ const PersonNode = ({ id, data }: any) => {
       <Handle type="target" position={Position.Right} id="t-right" className="w-3 h-3 bg-transparent border-transparent" />
 
       {/* Source handles */}
-      <Handle type="source" position={Position.Top} id="s-top" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Child')} />
-      <Handle type="source" position={Position.Bottom} id="s-bottom" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Parent')} />
-      <Handle type="source" position={Position.Left} id="s-left" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Sibling')} />
-      <Handle type="source" position={Position.Right} id="s-right" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Sibling')} />
+      <Handle type="source" position={Position.Top} id="s-top" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Parent')} />
+      <Handle type="source" position={Position.Bottom} id="s-bottom" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Child')} />
+      <Handle type="source" position={Position.Left} id="s-left" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Side')} />
+      <Handle type="source" position={Position.Right} id="s-right" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Side')} />
 
       {data.imageUrl ? (
         <img src={data.imageUrl} alt={data.label} className="w-10 h-10 rounded-full object-cover bg-muted flex-shrink-0" />
@@ -58,16 +110,47 @@ const nodeTypes = {
   person: PersonNode,
 };
 
+const edgeTypes = {
+  implicitEdge: ImplicitEdge,
+};
+
 export default function RelationshipGraph({ relationships, people, onAddVisual }: RelationshipGraphProps) {
   const { theme } = useTheme();
   
   const [addingRelation, setAddingRelation] = useState<{ personId: string, relType: string, personName: string } | null>(null);
   const [selectedPersonForAdd, setSelectedPersonForAdd] = useState<string[]>([]);
 
+  const handleAcceptImplicit = useCallback(async (edgeData: any) => {
+    try {
+      const res = await fetch('/api/relationships', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          person1Id: edgeData.sourceId,
+          person2Id: edgeData.targetId,
+          relationshipType: edgeData.label,
+        }),
+      });
+      if (res.ok) {
+        toast.success(`Accepted ${edgeData.label}!`);
+        if (onAddVisual) onAddVisual();
+      } else {
+        toast.error('Failed to accept connection.');
+      }
+    } catch {
+      toast.error('Error contacting server.');
+    }
+  }, [onAddVisual]);
+
   const handleAddRelationClick = useCallback((info: any) => {
-    setAddingRelation(info);
+    let type = info.relType;
+    if (type === 'Side') {
+      const isParent = relationships.some(r => r.relationshipType === 'Parent' && r.person1Id === info.personId);
+      type = isParent ? 'Spouse' : 'Sibling';
+    }
+    setAddingRelation({ ...info, relType: type });
     setSelectedPersonForAdd([]);
-  }, []);
+  }, [relationships]);
 
   const peopleMap = useMemo(() => {
     const map: Record<string, IPerson> = {};
@@ -77,7 +160,7 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
     return map;
   }, [people]);
 
-  const { nodes, edges } = useMemo(() => {
+  const { initialNodes, initialEdges } = useMemo(() => {
     const dagreGraph = new dagre.graphlib.Graph();
     dagreGraph.setDefaultEdgeLabel(() => ({}));
     dagreGraph.setGraph({ rankdir: 'TB', ranksep: 120, nodesep: 150 });
@@ -103,14 +186,31 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
 
       const key = `${finalSource}-${finalTarget}`;
       
+      const sourceName = peopleMap[finalSource]?.name || 'Unknown';
+      const targetName = peopleMap[finalTarget]?.name || 'Unknown';
+      let tooltipText = `Accept ${finalLabel} relationship`;
+      
+      if (finalLabel === 'Parent') {
+        tooltipText = `Click to formally save ${sourceName} as the Parent of ${targetName}`;
+      } else {
+        tooltipText = `Click to formally link ${sourceName} and ${targetName} as ${finalLabel}s`;
+      }
+
       if (!normalizedEdges.has(key)) {
          normalizedEdges.set(key, {
            id: key,
            source: finalSource,
            target: finalTarget,
            label: finalLabel,
-           data: { realId },
-           type: 'smoothstep',
+           data: { 
+             realId,
+             sourceId: finalSource,
+             targetId: finalTarget,
+             label: finalLabel,
+             tooltipText,
+             onAccept: handleAcceptImplicit
+           },
+           type: isImplicit ? 'implicitEdge' : 'smoothstep',
            markerEnd: {
              type: MarkerType.ArrowClosed,
              width: 15,
@@ -123,10 +223,11 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
          const existing = normalizedEdges.get(key)!;
          if (existing.animated) {
             existing.animated = false;
+            existing.type = 'smoothstep';
             existing.style = undefined;
             existing.label = finalLabel;
          }
-         if (realId) existing.data = { realId };
+         existing.data = { ...existing.data, realId };
       }
     };
 
@@ -210,8 +311,16 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
       return edge;
     });
 
-    return { nodes: layoutedNodes, edges: layoutedEdges };
+    return { initialNodes: layoutedNodes, initialEdges: layoutedEdges };
   }, [relationships, peopleMap, handleAddRelationClick]);
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  useEffect(() => {
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+  }, [initialNodes, initialEdges, setNodes, setEdges]);
 
   const handleConnect = useCallback(async (params: Connection) => {
     if (params.source === params.target) {
@@ -225,7 +334,23 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
     } else if (params.sourceHandle === 's-top') {
       relType = 'Child'; 
     } else if (params.sourceHandle === 's-left' || params.sourceHandle === 's-right') {
-      relType = 'Sibling'; 
+      const sourceChildren = relationships.filter(r => r.relationshipType === 'Parent' && r.person1Id === params.source).map(r => r.person2Id);
+      const targetChildren = relationships.filter(r => r.relationshipType === 'Parent' && r.person1Id === params.target).map(r => r.person2Id);
+      const shareChild = sourceChildren.some(c => targetChildren.includes(c));
+
+      const sourceParents = relationships.filter(r => r.relationshipType === 'Parent' && r.person2Id === params.source).map(r => r.person1Id);
+      const targetParents = relationships.filter(r => r.relationshipType === 'Parent' && r.person2Id === params.target).map(r => r.person1Id);
+      const shareParent = sourceParents.some(p => targetParents.includes(p));
+
+      if (shareChild) {
+        relType = 'Spouse';
+      } else if (shareParent) {
+        relType = 'Sibling';
+      } else if (sourceChildren.length > 0 || targetChildren.length > 0) {
+        relType = 'Spouse'; 
+      } else {
+        relType = 'Sibling'; 
+      }
     }
 
     try {
@@ -276,14 +401,31 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
 
   const submitManualAdd = async () => {
     if (!addingRelation || selectedPersonForAdd.length === 0) return;
+
+    let p1 = addingRelation.personId;
+    let p2 = selectedPersonForAdd[0];
+    let rType = addingRelation.relType;
+
+    if (addingRelation.relType === 'Parent') {
+      // The new person (p2) is the parent of the current person (p1)
+      p1 = selectedPersonForAdd[0];
+      p2 = addingRelation.personId;
+      rType = 'Parent';
+    } else if (addingRelation.relType === 'Child') {
+      // The current person (p1) is the parent of the new person (p2)
+      p1 = addingRelation.personId;
+      p2 = selectedPersonForAdd[0];
+      rType = 'Parent';
+    }
+
     try {
       const res = await fetch('/api/relationships', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          person1Id: addingRelation.personId,
-          person2Id: selectedPersonForAdd[0],
-          relationshipType: addingRelation.relType,
+          person1Id: p1,
+          person2Id: p2,
+          relationshipType: rType,
         }),
       });
       if (res.ok) {
@@ -303,7 +445,10 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         fitView
         onConnect={handleConnect}
         onEdgeContextMenu={handleEdgeContextMenu}
