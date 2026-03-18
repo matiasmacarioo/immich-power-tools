@@ -267,6 +267,19 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
                });
            });
        });
+
+       // Infer spouse's children as possible 'Parent' relationships
+       const spousesA = getSpouses(aId);
+       spousesA.forEach(spouseId => {
+           const spouseChildren = getChildren(spouseId);
+           const myChildren = getChildren(aId);
+           spouseChildren.forEach(childId => {
+               if (!myChildren.includes(childId) && aId !== childId) {
+                   // Suggest the current node (aId) as the Parent of the spouse's child
+                   addSuggestion(aId, childId, 'Parent');
+               }
+           });
+       });
     });
 
     nodesArr.forEach((node) => {
@@ -554,9 +567,13 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
                             {s.sourceImage ? <img src={s.sourceImage} className="w-8 h-8 rounded-full object-cover border-2 border-card" /> : <div className="w-8 h-8 rounded-full bg-muted border-2 border-card flex items-center justify-center text-[10px]">?</div>}
                             {s.targetImage ? <img src={s.targetImage} className="w-8 h-8 rounded-full object-cover border-2 border-card" /> : <div className="w-8 h-8 rounded-full bg-muted border-2 border-card flex items-center justify-center text-[10px]">?</div>}
                          </div>
-                         <div className="flex flex-col">
-                            <span className="font-semibold leading-none">{s.label}</span>
-                            <span className="text-xs text-muted-foreground">{s.sourceName} & {s.targetName}</span>
+                         <div className="flex flex-col gap-1">
+                            <span className="font-semibold leading-tight text-primary">{s.label}</span>
+                            <span className="text-xs text-muted-foreground leading-tight">
+                               {['Parent', 'Step-Parent'].includes(s.label) 
+                                 ? `${s.sourceName} is the ${s.label} of ${s.targetName}` 
+                                 : `${s.sourceName} and ${s.targetName} are ${s.label}s`}
+                            </span>
                          </div>
                       </div>
                       <Button size="icon" variant="ghost" onClick={() => handleAcceptImplicit(s)} className="h-8 w-8 text-green-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-500/20 opacity-0 group-hover:opacity-100 transition-opacity">
