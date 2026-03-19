@@ -118,36 +118,40 @@ export default function RelationshipTree() {
   return (
     <PageLayout className="!p-0 !mb-0 flex flex-col">
       {/* Top Bar for Adding / Importing / Exporting */}
-      <div className="flex items-center gap-2 p-4 border-b bg-background shadow-sm flex-wrap">
-        <div className="w-48"><PeopleDropdown peopleIds={person1 ? [person1] : []} onChange={(ids) => setPerson1(ids[0] || '')} /></div>
-        <span className="text-sm font-medium">{t('is')}</span>
-        <div className="w-36">
-          <Select value={relationType} onValueChange={setRelationType}>
-            <SelectTrigger><SelectValue placeholder={t('Relation')} /></SelectTrigger>
-            <SelectContent>
-              {RELATIONSHIP_TYPES.map(type => <SelectItem key={type} value={type}>{t(type)}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <span className="text-sm font-medium">{t('to')}</span>
-        <div className="w-48"><PeopleDropdown peopleIds={person2 ? [person2] : []} onChange={(ids) => setPerson2(ids[0] || '')} /></div>
-        
-        <Button onClick={handleAddRelation} disabled={isLoading} size="sm" className="ml-2">
-          {t('Add Relation')}
-        </Button>
+      <div className="flex flex-col sm:flex-row items-center gap-2 p-4 border-b bg-background shadow-sm flex-wrap">
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+          <div className="w-full sm:w-48"><PeopleDropdown peopleIds={person1 ? [person1] : []} onChange={(ids) => setPerson1(ids[0] || '')} /></div>
+          <span className="text-sm font-medium hidden sm:inline-block">{t('is')}</span>
+          <div className="w-full sm:w-36">
+            <Select value={relationType} onValueChange={setRelationType}>
+              <SelectTrigger className="w-full"><SelectValue placeholder={t('Relation')} /></SelectTrigger>
+              <SelectContent>
+                {RELATIONSHIP_TYPES.map(type => <SelectItem key={type} value={type}>{t(type)}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <span className="text-sm font-medium hidden sm:inline-block">{t('to')}</span>
+          <div className="w-full sm:w-48"><PeopleDropdown peopleIds={person2 ? [person2] : []} onChange={(ids) => setPerson2(ids[0] || '')} /></div>
 
-        <div className="flex-1"></div>
-
-        <Button variant="outline" size="sm" onClick={handleExport} className="flex gap-2">
-          <Download size={16} /> {t('Export')}
-        </Button>
-
-        <label className="cursor-pointer">
-          <input type="file" accept=".json" className="hidden" onChange={handleImport} />
-          <Button variant="outline" size="sm" asChild>
-            <span className="flex gap-2"><Upload size={16} /> {t('Import')}</span>
+          <Button onClick={handleAddRelation} disabled={isLoading} size="sm" className="w-full sm:w-auto sm:ml-2">
+            {t('Add Relation')}
           </Button>
-        </label>
+        </div>
+
+        <div className="flex-1 hidden sm:block"></div>
+
+        <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+          <Button variant="outline" size="sm" onClick={handleExport} className="flex-1 sm:flex-none flex gap-2">
+            <Download size={16} /> {t('Export')}
+          </Button>
+
+          <label className="cursor-pointer flex-1 sm:flex-none">
+            <input type="file" accept=".json" className="hidden" onChange={handleImport} />
+            <Button variant="outline" size="sm" className="w-full flex gap-2" asChild>
+              <span><Upload size={16} /> {t('Import')}</span>
+            </Button>
+          </label>
+        </div>
       </div>
 
       <div className='flex-1 w-full relative min-h-[500px]'>

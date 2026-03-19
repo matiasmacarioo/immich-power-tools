@@ -1,0 +1,20 @@
+$ next dev
+  ▲ Next.js 14.2.5
+  - Local:        http://localhost:3000
+
+ ✓ Starting...
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+ ✓ Ready in 1750ms
+ ○ Compiling /people/relationship-tree ...
+ ✓ Compiled /people/relationship-tree in 13.2s (1242 modules)
+ ✓ Compiled in 689ms (1242 modules)
+ GET /people/relationship-tree 200 in 14668ms
+ ○ Compiling /api/users/me ...
+ ✓ Compiled /api/users/me in 5.3s (276 modules)
+ GET /api/users/me 500 in 5764ms
+ GET /people/relationship-tree 200 in 94ms
+ GET /api/users/me 500 in 7ms

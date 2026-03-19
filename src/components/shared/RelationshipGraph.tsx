@@ -408,7 +408,7 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
 
       {/* Suggestions panel */}
       {suggestions.length > 0 && (
-        <div className="absolute top-4 right-4 z-50 bg-card/95 backdrop-blur-sm border rounded-lg shadow-lg w-80 max-h-[80vh] flex flex-col pointer-events-auto">
+        <div className="absolute top-4 left-4 right-4 sm:left-auto sm:right-4 z-50 bg-card/95 backdrop-blur-sm border rounded-lg shadow-lg sm:w-80 max-h-[40vh] sm:max-h-[80vh] flex flex-col pointer-events-auto">
           <div className="p-3 border-b font-semibold bg-muted/50 rounded-t-lg">Suggested Relationships</div>
           <div className="flex flex-col p-2 gap-2 overflow-y-auto">
             {suggestions.map((s) => (
