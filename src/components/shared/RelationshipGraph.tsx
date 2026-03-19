@@ -49,16 +49,45 @@ const nodeHeight = 60;
 
 // Custom node featuring robust visual handles
 const PersonNode = ({ id, data }: any) => {
+  const { t } = useLanguage();
 
-  const handleClick = (e: React.MouseEvent, type: string, category: string) => {
+  const handleClick = (e: React.MouseEvent, type: string, pos: string) => {
     e.stopPropagation();
     if (data.onAddRelationClick) {
-      data.onAddRelationClick({ personId: id, relType: type, category, personName: data.label });
+      data.onAddRelationClick({ personId: id, relType: type, category: pos, personName: data.label });
     }
   };
 
+  const { isFusedRight, isFusedLeft, hoverColor } = data;
+  let computedRounded = data.roundedClass || 'rounded-xl';
+  if (isFusedRight && isFusedLeft) computedRounded = 'rounded-none border-x-0';
+  else if (isFusedRight) computedRounded = 'rounded-l-xl rounded-r-none border-r-0';
+  else if (isFusedLeft) computedRounded = 'rounded-r-xl rounded-l-none border-l-0';
+
+  const isEntering = !!hoverColor;
+  const colorTrans = `border-color 200ms ease ${isEntering ? '250ms' : '0ms'}`;
+  const radiusTrans = `border-radius 250ms ease`;
+  const bgTrans = `background-color 200ms ease`;
+
+  const mainStyle = {
+      borderColor: hoverColor || 'var(--border)',
+      zIndex: hoverColor ? 10 : 1,
+      transition: `${colorTrans}, ${radiusTrans}, ${bgTrans}`
+  };
+
+  const bridgeStyle = {
+      left: 'calc(100% - 1px)',
+      width: isFusedRight ? '42px' : '0px',
+      opacity: isFusedRight ? 1 : 0,
+      borderTopWidth: '1px',
+      borderBottomWidth: '1px',
+      borderColor: hoverColor || 'var(--border)',
+      transition: `width 250ms ease, opacity 250ms ease, ${colorTrans}`
+  };
+
   return (
-    <div className={`flex items-center justify-center gap-3 bg-card border p-2 shadow-sm w-[220px] relative transition-all ${data.roundedClass || 'rounded-lg'}`}>
+    <div className={`flex items-center justify-center gap-3 bg-card border p-2 shadow-sm w-[220px] relative ${computedRounded}`} style={mainStyle}>
+      <div className="absolute top-[-1px] bottom-[-1px] bg-card -z-10" style={bridgeStyle} />
       {/* Target handles */}
       <Handle type="target" position={Position.Top} id="t-top" className="w-3 h-3 bg-transparent border-transparent" />
       <Handle type="target" position={Position.Bottom} id="t-bottom" className="w-3 h-3 bg-transparent border-transparent" />
@@ -367,17 +396,17 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
        relationships.forEach(r => {
            if (r.relationshipType === 'Cousin') {
                const cousinId = r.person1Id === aId ? r.person2Id : (r.person2Id === aId ? r.person1Id : null);
-               if (cousinId) {
-                   getSiblings(cousinId).forEach(cousinSib => {
-                       if (cousinSib !== aId && !getSiblings(aId).includes(cousinSib)) {
-                           addSuggestion(aId, cousinSib, 'Cousin');
-                       }
-                   });
-               }
-           }
-       });
+                if (cousinId) {
+                    getSiblings(cousinId).forEach(cousinSib => {
+                        if (cousinSib !== aId && !getSiblings(aId).includes(cousinSib)) {
+                            addSuggestion(aId, cousinSib, 'Cousin');
+                        }
+                    });
+                }
+            }
+        });
 
-       // Infer spouse's children as possible 'Parent' relationships
+        // Infer spouse's children as possible 'Parent' relationships
        const spousesA = getSpouses(aId);
        spousesA.forEach(spouseId => {
            const spouseChildren = getChildren(spouseId);
@@ -560,6 +589,21 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
            }
         }
     });
+
+    for (let i = 0; i < layoutedNodes.length; i++) {
+        for (let j = 0; j < layoutedNodes.length; j++) {
+            if (i === j) continue;
+            const n1 = layoutedNodes[i];
+            const n2 = layoutedNodes[j];
+            if (n1.position.y === n2.position.y && isSibling(n1.id, n2.id)) {
+                const distance = n2.position.x - (n1.position.x + nodeWidth);
+                if (distance >= 35 && distance <= 45) {
+                    n1.data = { ...n1.data, adjacentSiblingId: n2.id };
+                    n2.data = { ...n2.data, prevSiblingId: n1.id };
+                }
+            }
+        }
+    }
 
     // Remap handles dynamically computing optimal geometric short-paths
     const layoutedEdges = Array.from(normalizedEdges.values()).map((edge) => {
@@ -860,6 +904,8 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
       };
     }));
     
+    const highlightedIds = new Set([node.id, ...Array.from(inferences.keys())]);
+
     setNodes((nds) => nds.map((n) => {
       let isConnectedNode = n.id === node.id;
       let badgeLabel = undefined;
@@ -871,6 +917,22 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
           isConnectedNode = true;
           badgeLabel = inferredRelation.type;
           badgeColor = getEdgeColor(inferredRelation.type);
+      } else if (isConnectedNode) {
+          badgeColor = '#e2e8f0'; // Clean slate-200 distinct highlighting for self
+      }
+      
+      let isFusedRight = false;
+      let isFusedLeft = false;
+      
+      if (isConnectedNode && n.data.adjacentSiblingId && highlightedIds.has(n.data.adjacentSiblingId as string)) {
+          isFusedRight = true;
+      }
+      if (isConnectedNode && n.data.prevSiblingId && highlightedIds.has(n.data.prevSiblingId as string)) {
+          isFusedLeft = true;
+      }
+
+      if (isConnectedNode && !inferredRelation && (isFusedRight || isFusedLeft)) {
+          badgeColor = getEdgeColor('Sibling');
       }
 
       return {
@@ -879,6 +941,8 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
           ...n.data,
           hoverBadge: badgeLabel ? t(badgeLabel) : undefined,
           hoverColor: badgeColor,
+          isFusedRight,
+          isFusedLeft
         },
         style: {
            ...n.style,
@@ -891,25 +955,32 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
 
   const onNodeMouseLeave = useCallback(() => {
     setEdges((eds) => eds.map((ed) => {
+      const edgeType = ed.data?.type || ed.label;
       return {
         ...ed,
         animated: false,
         style: {
-           transition: 'stroke-width 0.2s, stroke 0.2s, opacity 0.2s',
+          strokeWidth: 1,
+          stroke: getEdgeColor(edgeType as string),
+          opacity: 1,
+          transition: 'stroke-width 0.2s, stroke 0.2s, opacity 0.2s',
         },
       };
     }));
+    
     setNodes((nds) => nds.map((n) => ({
       ...n,
       data: {
-         ...n.data,
-         hoverBadge: undefined,
-         hoverColor: undefined,
+        ...n.data,
+        hoverBadge: undefined,
+        hoverColor: undefined,
+        isFusedRight: false,
+        isFusedLeft: false
       },
       style: {
-         ...n.style,
-         opacity: 1,
-         transition: 'opacity 0.2s',
+        ...n.style,
+        opacity: 1,
+        transition: 'opacity 0.2s',
       }
     })));
   }, [setEdges, setNodes]);
