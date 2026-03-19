@@ -27,6 +27,7 @@ interface AssetGridRef {
 
 const AssetGrid = forwardRef<AssetGridRef, AssetGridProps>(({ assets, isInternal = true, selectable = false, onSelectionChange }, ref) => {
   const [index, setIndex] = useState(-1);
+  const [currentSlideIdx, setCurrentSlideIdx] = useState(0);
   const [lastSelectedIndex, setLastSelectedIndex] = useState(-1);
   const { exImmichUrl } = useConfig();
   // Use context for selection state
@@ -46,11 +47,12 @@ const AssetGrid = forwardRef<AssetGridRef, AssetGridProps>(({ assets, isInternal
   }), [assets, selectedIds, updateContext]);
 
 
-  const handleClick = (index: number, asset: IAsset, event: React.MouseEvent<HTMLElement>) => {
+  const handleClick = (idx: number, asset: IAsset, event: React.MouseEvent<HTMLElement>) => {
     if (selectedIds.length > 0) {
-      handleSelect(index, asset, event);
+      handleSelect(idx, asset, event);
     } else {
-      setIndex(index);
+      setCurrentSlideIdx(idx);
+      setIndex(idx);
     }
   }
 
@@ -187,9 +189,23 @@ const AssetGrid = forwardRef<AssetGridRef, AssetGridProps>(({ assets, isInternal
         open={index >= 0}
         index={index}
         close={() => setIndex(-1)}
-        controller={{ closeOnBackdropClick: true }}
-        on={{
-          click: (e: any) => e?.stopPropagation?.(),
+        controller={{ closeOnBackdropClick: false }}
+        on={{ view: ({ index: i }) => setCurrentSlideIdx(i) }}
+        toolbar={{
+          buttons: [
+            <a
+              key="open-in-immich"
+              href={slides[currentSlideIdx]?.id ? `${exImmichUrl}/photos/${slides[currentSlideIdx].id}` : '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open in Immich"
+              className="yarl__button"
+            >
+              <ExternalLink size={18} strokeWidth={1.75} />
+            </a>,
+            "download",
+            "close",
+          ],
         }}
       />
       <Gallery

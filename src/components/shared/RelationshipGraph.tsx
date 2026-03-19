@@ -437,8 +437,11 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
       </Dialog>
 
       {/* Person photos dialog */}
-      <Dialog open={!!selectedPersonPhotos} onOpenChange={(open) => !open && setSelectedPersonPhotos(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col !p-6">
+      <Dialog open={!!selectedPersonPhotos} onOpenChange={(open) => !open && setSelectedPersonPhotos(null)} modal={false}>
+        <DialogContent
+          className="max-w-4xl max-h-[90vh] flex flex-col !p-6"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>{selectedPersonPhotos?.name}&apos;s Photos</DialogTitle>
             <DialogDescription>Photos ordered by date.</DialogDescription>
