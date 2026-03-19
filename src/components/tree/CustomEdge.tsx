@@ -1,5 +1,6 @@
 import React from 'react';
 import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath } from '@xyflow/react';
+import { getEdgeColor, isDashedEdge } from './edgeColors';
 
 const CustomEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, markerEnd, data }: any) => {
   const [edgePath, labelX, labelY] = getSmoothStepPath({
@@ -7,10 +8,20 @@ const CustomEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, ta
   });
 
   const isHovered = !!style?.stroke;
+  const isDashed = isDashedEdge(data?.type);
+  const color = getEdgeColor(data?.type);
+
+  const edgeStyle = {
+    ...style,
+    stroke: isHovered ? style.stroke : color,
+    strokeWidth: isHovered ? 3 : 2,
+    strokeDasharray: isDashed ? '5,5' : undefined,
+    transition: 'stroke 200ms ease, stroke-width 200ms ease',
+  };
 
   return (
     <>
-      <BaseEdge id={id} path={edgePath} style={style} markerEnd={markerEnd} />
+      <BaseEdge id={id} path={edgePath} style={edgeStyle} markerEnd={markerEnd} />
       <EdgeLabelRenderer>
         <div
           style={{

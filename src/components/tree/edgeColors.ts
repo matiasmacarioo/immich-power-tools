@@ -1,6 +1,9 @@
 export const getEdgeColor = (type: string): string => {
   switch (type) {
     case 'Spouse': return '#ec4899';
+    case 'Ex-Spouse': return '#f9a8d4';   // faded pink
+    case 'Separated': return '#fb923c';   // orange
+    case 'Estranged': return '#94a3b8';   // slate gray
     case 'Sibling':
     case 'Step-Sibling':
     case 'Half-Sibling': return '#3b82f6';
@@ -26,3 +29,8 @@ export const getEdgeColor = (type: string): string => {
     default: return '#64748b';
   }
 };
+
+/** Types rendered with a dashed stroke */
+export const isDashedEdge = (type: string): boolean =>
+  ['Ex-Spouse', 'Separated', 'Estranged'].includes(type);
+

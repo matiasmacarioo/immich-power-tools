@@ -4,8 +4,8 @@ import { Node, Edge, MarkerType } from '@xyflow/react';
 export const NODE_WIDTH = 220;
 export const NODE_HEIGHT = 60;
 
-const CORE_RENDER_RELS = ['Parent', 'Step-Parent', 'Child', 'Step-Child', 'Spouse', 'Sibling', 'Step-Sibling', 'Half-Sibling'];
-const HORIZONTAL_RELS = ['Sibling', 'Spouse', 'Friend', 'Cousin', 'Step-Sibling', 'Half-Sibling', 'Sibling-in-law'];
+const CORE_RENDER_RELS = ['Parent', 'Step-Parent', 'Child', 'Step-Child', 'Spouse', 'Ex-Spouse', 'Separated', 'Estranged', 'Sibling', 'Step-Sibling', 'Half-Sibling'];
+const HORIZONTAL_RELS = ['Sibling', 'Spouse', 'Ex-Spouse', 'Separated', 'Estranged', 'Friend', 'Cousin', 'Step-Sibling', 'Half-Sibling', 'Sibling-in-law'];
 
 interface LayoutOptions {
   relationships: any[];
@@ -36,7 +36,7 @@ export function buildLayoutedGraph(opts: LayoutOptions): {
   const addSuggestion = (source: string, target: string, type: string) => {
     let finalSource = source;
     let finalTarget = target;
-    if (['Sibling', 'Spouse', 'Friend', 'Cousin', 'Step-Sibling'].includes(type)) {
+    if (['Sibling', 'Spouse', 'Ex-Spouse', 'Separated', 'Estranged', 'Friend', 'Cousin', 'Step-Sibling'].includes(type)) {
       if (source > target) { finalSource = target; finalTarget = source; }
     } else if (type === 'Child' || type === 'Step-Child') {
       finalSource = target; finalTarget = source;
@@ -64,7 +64,7 @@ export function buildLayoutedGraph(opts: LayoutOptions): {
     if (type === 'Child' || type === 'Step-Child') {
       finalSource = target; finalTarget = source;
       finalLabel = type === 'Child' ? 'Parent' : 'Step-Parent';
-    } else if (['Sibling', 'Spouse', 'Friend', 'Cousin', 'Step-Sibling'].includes(type)) {
+    } else if (['Sibling', 'Spouse', 'Ex-Spouse', 'Separated', 'Estranged', 'Friend', 'Cousin', 'Step-Sibling'].includes(type)) {
       if (source > target) { finalSource = target; finalTarget = source; }
     }
     const key = `${finalSource}-${finalTarget}`;

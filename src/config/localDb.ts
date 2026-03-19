@@ -23,3 +23,12 @@ localDb.exec(`
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
+
+// Person states table (deceased, etc.)
+localDb.exec(`
+  CREATE TABLE IF NOT EXISTS person_states (
+    personId TEXT PRIMARY KEY,
+    isDeceased INTEGER NOT NULL DEFAULT 0,
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);

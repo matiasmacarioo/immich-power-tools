@@ -13,11 +13,12 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { getEdgeColor } from '../tree/edgeColors';
 import PersonNode from '../tree/PersonNode';
 import CustomEdge from '../tree/CustomEdge';
-import { buildLayoutedGraph } from '../tree/layoutEngine';
+import { buildLayoutedGraph, NODE_WIDTH, NODE_HEIGHT } from '../tree/layoutEngine';
 import { buildRelationshipHelpers } from '../tree/inferenceEngine';
 import { getPersonAssets } from '@/handlers/api/person.handler';
 import AssetGrid from './AssetGrid';
 import { IAsset } from '@/types/asset';
+import { MoreVertical, Skull, Heart, Image as ImageIcon } from 'lucide-react';
 
 interface RelationshipGraphProps {
   relationships: any[];
@@ -42,6 +43,36 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [photosPage, setPhotosPage] = useState(1);
   const [hasMorePhotos, setHasMorePhotos] = useState(true);
+
+  const [personStates, setPersonStates] = useState<Record<string, { isDeceased: boolean }>>({});
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; personId: string; personName: string } | null>(null);
+
+  const fetchStates = useCallback(async () => {
+    try {
+      const res = await fetch('/api/person-states');
+      const data = await res.json();
+      const map: any = {};
+      data.forEach((s: any) => { map[s.personId] = { isDeceased: s.isDeceased === 1 }; });
+      setPersonStates(map);
+    } catch (e) { console.error('Failed to fetch person states', e); }
+  }, []);
+
+  useEffect(() => { fetchStates(); }, [fetchStates]);
+
+  const toggleDeceased = async (personId: string, currentState: boolean) => {
+    try {
+      const res = await fetch(`/api/person-states/${personId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isDeceased: !currentState }),
+      });
+      if (res.ok) {
+        toast.success(t(!currentState ? 'Marked as deceased' : 'Marked as living'));
+        fetchStates();
+        setContextMenu(null);
+      }
+    } catch { toast.error('Failed to update state'); }
+  };
 
   const peopleMap = useMemo(() => {
     const map: Record<string, IPerson> = {};
@@ -74,8 +105,18 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
       getSpouses,
       getSiblings,
     });
-    return { initialNodes: layoutedNodes, initialEdges: layoutedEdges, suggestions: sugg };
-  }, [relationships, peopleMap, handleAddRelationClick, t, getParents, getChildren, getSpouses, getSiblings]);
+
+    // Inject states (deceased etc) into nodes
+    const enrichedNodes = layoutedNodes.map((n) => ({
+      ...n,
+      data: {
+        ...n.data,
+        isDeceased: personStates[n.id]?.isDeceased ?? false,
+      }
+    }));
+
+    return { initialNodes: enrichedNodes as Node[], initialEdges: layoutedEdges, suggestions: sugg };
+  }, [relationships, peopleMap, handleAddRelationClick, t, getParents, getChildren, getSpouses, getSiblings, personStates]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -200,7 +241,7 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
 
     const highlightedIds = new Set([node.id, ...Array.from(inferences.keys())]);
 
-    setNodes((nds) => nds.map((n) => {
+    setNodes((nds) => nds.map((n: any) => {
       let isConnectedNode = n.id === node.id;
       let badgeLabel: string | undefined;
       let badgeColor: string | undefined;
@@ -243,11 +284,18 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
 
       return {
         ...n,
-        data: { ...n.data, hoverBadge: badgeLabel ? t(badgeLabel) : undefined, hoverColor: badgeColor, fusedRightType, fusedLeftType },
+        data: {
+          ...n.data,
+          hoverBadge: badgeLabel ? t(badgeLabel) : undefined,
+          hoverColor: badgeColor,
+          fusedRightType,
+          fusedLeftType,
+          isDeceased: personStates[n.id]?.isDeceased ?? false,
+        },
         style: { ...n.style, opacity: isConnectedNode ? 1 : 0.4, transition: 'opacity 0.2s' },
       };
     }));
-  }, [setEdges, setNodes, getInferredRelationship, t, people]);
+  }, [setEdges, setNodes, getInferredRelationship, t, people, personStates]);
 
   const onNodeMouseLeave = useCallback(() => {
     setEdges((eds) => eds.map((ed) => ({
@@ -259,7 +307,7 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
         transition: 'stroke-width 0.2s, stroke 0.2s, opacity 0.2s',
       },
     })));
-    setNodes((nds) => nds.map((n) => ({
+    setNodes((nds) => nds.map((n: any) => ({
       ...n,
       data: { ...n.data, hoverBadge: undefined, hoverColor: undefined, fusedRightType: null, fusedLeftType: null },
       style: { ...n.style, opacity: 1, transition: 'opacity 0.2s' },
@@ -304,7 +352,7 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
         },
       };
     }));
-    setNodes((nds) => nds.map((n) => {
+    setNodes((nds) => nds.map((n: any) => {
       const isConnectedNode = n.id === edge.source || n.id === edge.target;
       return {
         ...n,
@@ -318,6 +366,19 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
     }));
   }, [setEdges, setNodes]);
 
+  const onNodeContextMenu = useCallback((e: React.MouseEvent, node: Node) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, personId: node.id, personName: node.data.label as string });
+  }, []);
+
+  // Close context menu on any click elsewhere
+  useEffect(() => {
+    if (!contextMenu) return;
+    const hide = () => setContextMenu(null);
+    window.addEventListener('click', hide);
+    return () => window.removeEventListener('click', hide);
+  }, [contextMenu]);
+
   // ──── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -330,12 +391,14 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
         onNodeMouseEnter={onNodeMouseEnter}
         onNodeMouseLeave={onNodeMouseLeave}
         onEdgeMouseEnter={onEdgeMouseEnter}
+        onEdgeMouseEnter={onEdgeMouseEnter}
         onEdgeMouseLeave={onNodeMouseLeave}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
         onConnect={handleConnect}
         onNodeClick={onNodeClick}
+        onNodeContextMenu={onNodeContextMenu}
         onEdgeContextMenu={handleEdgeContextMenu}
         colorMode={theme === 'dark' ? 'dark' : 'light'}
       >
@@ -404,6 +467,9 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
                   <option value="Step-Sibling">{t('Step-Sibling')}</option>
                   <option value="Half-Sibling">{t('Half-Sibling')}</option>
                   <option value="Spouse">{t('Spouse')}</option>
+                  <option value="Ex-Spouse">{t('Ex-Spouse')}</option>
+                  <option value="Separated">{t('Separated')}</option>
+                  <option value="Estranged">{t('Estranged')}</option>
                   <option value="Cousin">{t('Cousin')}</option>
                   <option value="Sibling-in-law">{t('Sibling-in-law')}</option>
                   <option value="Friend">{t('Friend')}</option>
@@ -475,6 +541,42 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Node Context Menu */}
+      {contextMenu && (
+        <div
+          className="fixed z-[100] bg-card border rounded-lg shadow-xl py-1 min-w-[160px] animate-in fade-in zoom-in duration-100"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-3 py-2 border-b mb-1">
+            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{contextMenu.personName}</div>
+          </div>
+          <button
+            onClick={() => onNodeClick(null as any, { id: contextMenu?.personId, data: { label: contextMenu?.personName } } as any)}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted transition-colors text-left"
+          >
+            <ImageIcon size={14} className="text-blue-500" />
+            {t('View Photos')}
+          </button>
+          <button
+            onClick={() => contextMenu && toggleDeceased(contextMenu.personId, personStates[contextMenu.personId]?.isDeceased ?? false)}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted transition-colors text-left"
+          >
+            {personStates[contextMenu.personId]?.isDeceased ? (
+              <>
+                <Heart size={14} className="text-rose-500 fill-rose-500/20" />
+                {t('Mark as Living')}
+              </>
+            ) : (
+              <>
+                <Skull size={14} className="text-muted-foreground" />
+                {t('Mark as Deceased')}
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

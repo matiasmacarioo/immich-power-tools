@@ -16,7 +16,7 @@ const RelationshipGraph = dynamic(() => import('@/components/shared/Relationship
   loading: () => <div className="h-full w-full flex items-center justify-center">Loading tree...</div>
 });
 
-const RELATIONSHIP_TYPES = ['Parent', 'Step-Parent', 'Child', 'Spouse', 'Sibling', 'Step-Sibling', 'Cousin', 'Godparent', 'Godchild', 'Friend', 'Other'];
+const RELATIONSHIP_TYPES = ['Parent', 'Step-Parent', 'Child', 'Spouse', 'Ex-Spouse', 'Separated', 'Estranged', 'Sibling', 'Step-Sibling', 'Cousin', 'Godparent', 'Godchild', 'Friend', 'Other'];
 
 export default function RelationshipTree() {
   const { t } = useLanguage();
