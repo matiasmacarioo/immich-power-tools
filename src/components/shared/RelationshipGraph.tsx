@@ -189,8 +189,12 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
           if (c !== personId) siblings.add(c);
       });
     });
-    relationships.filter(r => r.relationshipType === 'Sibling' && r.person1Id === personId).forEach(r => siblings.add(r.person2Id));
-    relationships.filter(r => r.relationshipType === 'Sibling' && r.person2Id === personId).forEach(r => siblings.add(r.person1Id));
+    relationships.forEach(r => {
+      if (['Sibling', 'Step-Sibling', 'Half-Sibling'].includes(r.relationshipType)) {
+        if (r.person1Id === personId) siblings.add(r.person2Id);
+        if (r.person2Id === personId) siblings.add(r.person1Id);
+      }
+    });
     return Array.from(siblings);
   }, [relationships, getParents, getChildren]);
 
@@ -307,17 +311,56 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
            });
        });
 
-       // Infer cousins
+       // Infer cousins (Robust Engine)
+       // 1. Through Aunts/Uncles (parents' siblings and their spouses)
        parentsA.forEach(pA => {
-           const siblingsP = getSiblings(pA);
-           siblingsP.forEach(sP => {
-               const childrenS = getChildren(sP);
-               childrenS.forEach(bId => {
-                   if (aId !== bId) {
-                      addSuggestion(aId, bId, 'Cousin');
+           const auntsAndUncles = new Set(getSiblings(pA));
+           
+           getParents(pA).forEach(gp => {
+               getChildren(gp).forEach(c => auntsAndUncles.add(c));
+           });
+
+           const auntsAndUnclesByMarriage = new Set<string>();
+           auntsAndUncles.forEach(au => {
+               getSpouses(au).forEach(sp => auntsAndUnclesByMarriage.add(sp));
+           });
+
+           const allAuntsUncles = Array.from(auntsAndUncles).concat(Array.from(auntsAndUnclesByMarriage));
+           
+           allAuntsUncles.forEach(au => {
+               if (au === pA || getSpouses(pA).includes(au)) return; 
+               getChildren(au).forEach(cousinId => {
+                   if (cousinId !== aId && !getSiblings(aId).includes(cousinId)) {
+                       addSuggestion(aId, cousinId, 'Cousin');
                    }
                });
            });
+       });
+
+       // 2. Propagate explicit cousin edges across sibling lines
+       // If my sibling has an explicit cousin, they are my cousin too.
+       getSiblings(aId).forEach(sib => {
+           relationships.forEach(r => {
+               if (r.relationshipType === 'Cousin') {
+                   if (r.person1Id === sib && r.person2Id !== aId) addSuggestion(aId, r.person2Id, 'Cousin');
+                   if (r.person2Id === sib && r.person1Id !== aId) addSuggestion(aId, r.person1Id, 'Cousin');
+               }
+           });
+       });
+
+       // 3. Propagate explicit cousin edges down target's sibling lines
+       // If I have an explicit cousin C, C's siblings are also my cousins.
+       relationships.forEach(r => {
+           if (r.relationshipType === 'Cousin') {
+               const cousinId = r.person1Id === aId ? r.person2Id : (r.person2Id === aId ? r.person1Id : null);
+               if (cousinId) {
+                   getSiblings(cousinId).forEach(cousinSib => {
+                       if (cousinSib !== aId && !getSiblings(aId).includes(cousinSib)) {
+                           addSuggestion(aId, cousinSib, 'Cousin');
+                       }
+                   });
+               }
+           }
        });
 
        // Infer spouse's children as possible 'Parent' relationships
@@ -721,7 +764,7 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
                             <span className="text-xs text-muted-foreground leading-tight">
                                {['Parent', 'Step-Parent'].includes(s.label) 
                                  ? `${s.sourceName} ${t('is')} ${t(s.label)} ${t('to')} ${s.targetName}` 
-                                 : `${s.sourceName} y ${s.targetName} ${t('is')} ${t(s.label)}`}
+                                 : `${s.sourceName} y ${s.targetName} ${t('are_' + s.label)}`}
                             </span>
                          </div>
                       </div>
