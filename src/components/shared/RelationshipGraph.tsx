@@ -217,7 +217,7 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
           const pNodes = inf.path;
           for (let i = 0; i < pNodes.length - 1; i++) {
             if ((ed.source === pNodes[i] && ed.target === pNodes[i + 1]) ||
-                (ed.target === pNodes[i] && ed.source === pNodes[i + 1])) {
+              (ed.target === pNodes[i] && ed.source === pNodes[i + 1])) {
               isPathEdge = true;
               computedEdgeColor = getEdgeColor(inf.type);
               break;
@@ -390,7 +390,6 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
         onEdgesChange={onEdgesChange}
         onNodeMouseEnter={onNodeMouseEnter}
         onNodeMouseLeave={onNodeMouseLeave}
-        onEdgeMouseEnter={onEdgeMouseEnter}
         onEdgeMouseEnter={onEdgeMouseEnter}
         onEdgeMouseLeave={onNodeMouseLeave}
         nodeTypes={nodeTypes}
