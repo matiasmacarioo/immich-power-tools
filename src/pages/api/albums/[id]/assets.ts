@@ -34,7 +34,6 @@ export default async function handler(
     originalPath: assets.originalPath,
     isFavorite: assets.isFavorite,
     duration: assets.duration,
-    encodedVideoPath: assets.encodedVideoPath,
     originalFileName: assets.originalFileName,
     
     deletedAt: assets.deletedAt,

@@ -61,7 +61,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       originalPath: assets.originalPath,
       isFavorite: assets.isFavorite,
       duration: assets.duration,
-      encodedVideoPath: assets.encodedVideoPath,
       originalFileName: assets.originalFileName,
       deletedAt: assets.deletedAt,
       localDateTime: assets.localDateTime,

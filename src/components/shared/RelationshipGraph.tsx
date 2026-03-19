@@ -353,8 +353,8 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
               <div key={s.key} className="flex items-center justify-between text-sm p-2 rounded-md hover:bg-muted/50 border border-transparent hover:border-border transition-all group">
                 <div className="flex items-center gap-3">
                   <div className="flex -space-x-3">
-                    {s.sourceImage ? <img src={s.sourceImage} className="w-8 h-8 rounded-full object-cover border-2 border-card" /> : <div className="w-8 h-8 rounded-full bg-muted border-2 border-card flex items-center justify-center text-[10px]">?</div>}
-                    {s.targetImage ? <img src={s.targetImage} className="w-8 h-8 rounded-full object-cover border-2 border-card" /> : <div className="w-8 h-8 rounded-full bg-muted border-2 border-card flex items-center justify-center text-[10px]">?</div>}
+                    {s.sourceImage ? <img src={s.sourceImage} alt={s.sourceName} className="w-8 h-8 rounded-full object-cover border-2 border-card" /> : <div className="w-8 h-8 rounded-full bg-muted border-2 border-card flex items-center justify-center text-[10px]">?</div>}
+                    {s.targetImage ? <img src={s.targetImage} alt={s.targetName} className="w-8 h-8 rounded-full object-cover border-2 border-card" /> : <div className="w-8 h-8 rounded-full bg-muted border-2 border-card flex items-center justify-center text-[10px]">?</div>}
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="font-semibold leading-tight text-primary">{t(s.label)}</span>
