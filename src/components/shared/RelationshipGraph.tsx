@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import PeopleDropdown from './PeopleDropdown';
 import { Button } from '../ui/button';
 import { Check } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface RelationshipGraphProps {
   relationships: any[];
@@ -60,6 +61,7 @@ const nodeTypes = {
 };
 export default function RelationshipGraph({ relationships, people, onAddVisual }: RelationshipGraphProps) {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   
   const [addingRelation, setAddingRelation] = useState<{ personId: string, relType: string, category: string, personName: string } | null>(null);
   const [selectedPersonForAdd, setSelectedPersonForAdd] = useState<string[]>([]);
@@ -637,11 +639,11 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
                             {s.targetImage ? <img src={s.targetImage} className="w-8 h-8 rounded-full object-cover border-2 border-card" /> : <div className="w-8 h-8 rounded-full bg-muted border-2 border-card flex items-center justify-center text-[10px]">?</div>}
                          </div>
                          <div className="flex flex-col gap-1">
-                            <span className="font-semibold leading-tight text-primary">{s.label}</span>
+                            <span className="font-semibold leading-tight text-primary">{t(s.label)}</span>
                             <span className="text-xs text-muted-foreground leading-tight">
                                {['Parent', 'Step-Parent'].includes(s.label) 
-                                 ? `${s.sourceName} is the ${s.label} of ${s.targetName}` 
-                                 : `${s.sourceName} and ${s.targetName} are ${s.label}s`}
+                                 ? `${s.sourceName} ${t('is')} ${t(s.label)} ${t('to')} ${s.targetName}` 
+                                 : `${s.sourceName} y ${s.targetName} ${t('is')} ${t(s.label)}`}
                             </span>
                          </div>
                       </div>

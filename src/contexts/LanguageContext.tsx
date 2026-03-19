@@ -1,0 +1,64 @@
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+
+type Language = 'en' | 'es';
+
+interface LanguageContextType {
+  lang: Language;
+  setLang: (lang: Language) => void;
+  t: (key: string) => string;
+}
+
+const translations: Record<string, Record<Language, string>> = {
+  'Parent': { en: 'Parent', es: 'Padre/Madre' },
+  'Child': { en: 'Child', es: 'Hijo/Hija' },
+  'Spouse': { en: 'Spouse', es: 'Esposo/a' },
+  'Sibling': { en: 'Sibling', es: 'Hermano/a' },
+  'Step-Parent': { en: 'Step-Parent', es: 'Padrastro/Madrastra' },
+  'Step-Child': { en: 'Step-Child', es: 'Hijastro/a' },
+  'Step-Sibling': { en: 'Step-Sibling', es: 'Hermanastro/a' },
+  'Half-Sibling': { en: 'Half-Sibling', es: 'Medio hermano/a' },
+  'Cousin': { en: 'Cousin', es: 'Primo/a' },
+  'Friend': { en: 'Friend', es: 'Amigo/a' },
+  'Other': { en: 'Other', es: 'Otro' },
+  'is': { en: 'is', es: 'es' },
+  'to': { en: 'to', es: 'de' },
+  'Add Relation': { en: 'Add Relation', es: 'Añadir Relación' },
+  'Export': { en: 'Export', es: 'Exportar' },
+  'Import': { en: 'Import', es: 'Importar' },
+  'Relation': { en: 'Relation', es: 'Relación' },
+  'Please fill all fields': { en: 'Please fill all fields', es: 'Por favor completa todos los campos' },
+  'Cannot create relationship with themselves': { en: 'Cannot create relationship with themselves', es: 'No pueden tener relación consigo mismos' },
+  'Relationship added!': { en: 'Relationship added!', es: '¡Relación añadida!' },
+};
+
+const LanguageContext = createContext<LanguageContextType>({
+  lang: 'es',
+  setLang: () => {},
+  t: (key) => key,
+});
+
+export const LanguageProvider = ({ children }: { children: ReactNode }) => {
+  const [lang, setLang] = useState<Language>('es'); // Default to spanish as requested
+
+  useEffect(() => {
+    const saved = localStorage.getItem('appLang');
+    if (saved === 'en' || saved === 'es') setLang(saved);
+  }, []);
+
+  const handleSetLang = (newLang: Language) => {
+    setLang(newLang);
+    localStorage.setItem('appLang', newLang);
+  };
+
+  const t = (key: string) => {
+    return translations[key]?.[lang] || key;
+  };
+
+  return (
+    <LanguageContext.Provider value={{ lang, setLang: handleSetLang, t }}>
+      {children}
+    </LanguageContext.Provider>
+  );
+};
+
+export const useLanguage = () => useContext(LanguageContext);

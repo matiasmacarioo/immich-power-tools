@@ -101,9 +101,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
         ...user,
         updateContext: setUser,
       }}>
-        <div className="grid max-h-screen min-h-screen w-full md:grid-cols-[200px_1fr] lg:grid-cols-[240px_1fr]">
+        <div className="flex max-h-screen min-h-screen w-full">
           <Sidebar />
-          <div className="flex flex-col">{children}</div>
+          <div className="flex flex-col flex-1 min-w-0">{children}</div>
           <Toaster />
         </div>
       </UserContext.Provider>

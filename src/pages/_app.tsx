@@ -7,6 +7,8 @@ import ConfigContext, { ConfigContextType } from "@/contexts/ConfigContext";
 import { useRef } from "react";
 import { queryClient } from "@/config/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { LanguageProvider } from "@/contexts/LanguageContext";
+
 interface AppPropsWithProps extends AppProps {
   props: ConfigContextType;
 }
@@ -14,15 +16,17 @@ const App = ({ Component, pageProps, ...props }: AppPropsWithProps) => {
   const intialData = useRef(props.props);
 
   return (
-    <ConfigContext.Provider value={intialData.current}>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider attribute="class" storageKey="theme">
-          <RootLayout>
-            <Component {...pageProps} />
-          </RootLayout>
-        </ThemeProvider>
-      </QueryClientProvider>
-    </ConfigContext.Provider>
+    <LanguageProvider>
+      <ConfigContext.Provider value={intialData.current}>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider attribute="class" storageKey="theme">
+            <RootLayout>
+              <Component {...pageProps} />
+            </RootLayout>
+          </ThemeProvider>
+        </QueryClientProvider>
+      </ConfigContext.Provider>
+    </LanguageProvider>
   );
 };
 

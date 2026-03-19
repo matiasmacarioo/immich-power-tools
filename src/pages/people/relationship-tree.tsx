@@ -9,15 +9,17 @@ import dynamic from 'next/dynamic';
 import { toast } from 'react-hot-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Download, Upload } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const RelationshipGraph = dynamic(() => import('@/components/shared/RelationshipGraph'), {
   ssr: false,
   loading: () => <div className="h-full w-full flex items-center justify-center">Loading tree...</div>
 });
 
-const RELATIONSHIP_TYPES = ['Parent', 'Child', 'Spouse', 'Sibling', 'Friend', 'Other'];
+const RELATIONSHIP_TYPES = ['Parent', 'Step-Parent', 'Child', 'Spouse', 'Sibling', 'Step-Sibling', 'Cousin', 'Friend', 'Other'];
 
 export default function RelationshipTree() {
+  const { t } = useLanguage();
   const [relationships, setRelationships] = useState<any[]>([]);
   const [people, setPeople] = useState<IPerson[]>([]);
   const [person1, setPerson1] = useState<string>('');
@@ -115,37 +117,35 @@ export default function RelationshipTree() {
 
   return (
     <PageLayout className="!p-0 !mb-0 flex flex-col">
-      <Header leftComponent="Relationship Tree" rightComponent={null} />
-      
       {/* Top Bar for Adding / Importing / Exporting */}
       <div className="flex items-center gap-2 p-4 border-b bg-background shadow-sm flex-wrap">
         <div className="w-48"><PeopleDropdown peopleIds={person1 ? [person1] : []} onChange={(ids) => setPerson1(ids[0] || '')} /></div>
-        <span className="text-sm font-medium">is</span>
-        <div className="w-32">
+        <span className="text-sm font-medium">{t('is')}</span>
+        <div className="w-36">
           <Select value={relationType} onValueChange={setRelationType}>
-            <SelectTrigger><SelectValue placeholder="Relation" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder={t('Relation')} /></SelectTrigger>
             <SelectContent>
-              {RELATIONSHIP_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+              {RELATIONSHIP_TYPES.map(type => <SelectItem key={type} value={type}>{t(type)}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
-        <span className="text-sm font-medium">to</span>
+        <span className="text-sm font-medium">{t('to')}</span>
         <div className="w-48"><PeopleDropdown peopleIds={person2 ? [person2] : []} onChange={(ids) => setPerson2(ids[0] || '')} /></div>
         
         <Button onClick={handleAddRelation} disabled={isLoading} size="sm" className="ml-2">
-          Add Relation
+          {t('Add Relation')}
         </Button>
 
         <div className="flex-1"></div>
 
         <Button variant="outline" size="sm" onClick={handleExport} className="flex gap-2">
-          <Download size={16} /> Export
+          <Download size={16} /> {t('Export')}
         </Button>
 
         <label className="cursor-pointer">
           <input type="file" accept=".json" className="hidden" onChange={handleImport} />
           <Button variant="outline" size="sm" asChild>
-            <span className="flex gap-2"><Upload size={16} /> Import</span>
+            <span className="flex gap-2"><Upload size={16} /> {t('Import')}</span>
           </Button>
         </label>
       </div>
