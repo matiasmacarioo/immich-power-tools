@@ -8,6 +8,7 @@ import LazyGridImage from "../ui/lazy-grid-image";
 import Download from "yet-another-react-lightbox/plugins/download";
 import Video from "yet-another-react-lightbox/plugins/video";
 import { usePhotoSelectionContext } from '@/contexts/PhotoSelectionContext';
+import { ExternalLink } from 'lucide-react';
 import { useConfig } from '@/contexts/ConfigContext';
 
 
@@ -115,10 +116,37 @@ const AssetGrid = forwardRef<AssetGridRef, AssetGridProps>(({ assets, isInternal
       isVideo: p.type === "VIDEO",
       tags: [
         {
-          title: "Immich Link",
+          title: "Open in Immich",
           value: (
-            <a href={exImmichUrl + "/photos/" + p.id} target="_blank" rel="noopener noreferrer">
-              Open in Immich
+            <a
+              href={exImmichUrl + "/photos/" + p.id}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open in Immich"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "26px",
+                height: "26px",
+                borderRadius: "50%",
+                background: "rgba(0,0,0,0.5)",
+                backdropFilter: "blur(4px)",
+                border: "1px solid rgba(255,255,255,0.2)",
+                color: "#fff",
+                textDecoration: "none",
+                transition: "background 0.2s, transform 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(0,0,0,0.8)";
+                e.currentTarget.style.transform = "scale(1.1)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "rgba(0,0,0,0.5)";
+                e.currentTarget.style.transform = "scale(1)";
+              }}
+            >
+              <ExternalLink size={13} strokeWidth={2} />
             </a>
           ),
         },
@@ -134,10 +162,22 @@ const AssetGrid = forwardRef<AssetGridRef, AssetGridProps>(({ assets, isInternal
   };
 
   useEffect(() => {
-    // Listen for esc key press and unselect all images
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
   }, [images]);
+
+  // While the lightbox is open, intercept Escape in the capture phase so it
+  // never reaches the parent Radix Dialog (which would close the whole card).
+  useEffect(() => {
+    if (index < 0) return;
+    const blockEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+      }
+    };
+    document.addEventListener("keydown", blockEscape, true);
+    return () => document.removeEventListener("keydown", blockEscape, true);
+  }, [index]);
 
   return (
     <div>
@@ -147,6 +187,10 @@ const AssetGrid = forwardRef<AssetGridRef, AssetGridProps>(({ assets, isInternal
         open={index >= 0}
         index={index}
         close={() => setIndex(-1)}
+        controller={{ closeOnBackdropClick: true }}
+        on={{
+          click: (e: any) => e?.stopPropagation?.(),
+        }}
       />
       <Gallery
         images={images}
@@ -154,6 +198,17 @@ const AssetGrid = forwardRef<AssetGridRef, AssetGridProps>(({ assets, isInternal
         enableImageSelection={selectable}
         thumbnailImageComponent={LazyGridImage}
         onSelect={handleSelect}
+        tagStyle={{
+          background: "transparent",
+          color: "inherit",
+          padding: 0,
+          borderRadius: 0,
+          fontWeight: "inherit",
+          fontSize: "inherit",
+          lineHeight: "inherit",
+          whiteSpace: "normal",
+          verticalAlign: "middle",
+        }}
       />
     </div>
   );
