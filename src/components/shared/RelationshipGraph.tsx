@@ -31,6 +31,8 @@ const getEdgeColor = (type: string) => {
     case 'Chosno': return '#14b8a6'; 
     case 'Aunt/Uncle':
     case 'Niece/Nephew': return '#8b5cf6'; 
+    case 'Godparent':
+    case 'Godchild': return '#0ea5e9'; // Cyan
     case 'Sibling-in-law':
     case 'Parent-in-law':
     case 'Child-in-law': return '#eab308'; 
@@ -641,7 +643,7 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
       const sourceNode = layoutedNodes.find(n => n.id === edge.source);
       const targetNode = layoutedNodes.find(n => n.id === edge.target);
 
-      if (sourceNode && targetNode && ['Sibling', 'Spouse', 'Friend', 'Cousin', 'Step-Sibling', 'Half-Sibling'].includes(edge.label as string)) {
+      if (sourceNode && targetNode && ['Sibling', 'Spouse', 'Friend', 'Cousin', 'Step-Sibling', 'Half-Sibling', 'Sibling-in-law'].includes(edge.label as string)) {
           if (sourceNode.position.x < targetNode.position.x) {
              sourceHandle = 's-right';
              targetHandle = 't-left';
@@ -649,6 +651,9 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
              sourceHandle = 's-left';
              targetHandle = 't-right';
           }
+      } else if (['Godparent', 'Godchild', 'Aunt/Uncle', 'Niece/Nephew'].includes(edge.label as string)) {
+          sourceHandle = 's-top';
+          targetHandle = 't-top';
       }
 
       return {
@@ -1132,24 +1137,32 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
                >
                  {addingRelation?.category === 'Top' && (
                     <>
-                      <option value="Parent">Parent</option>
-                      <option value="Step-Parent">Step-Parent</option>
+                      <option value="Parent">{t('Parent')}</option>
+                      <option value="Step-Parent">{t('Step-Parent')}</option>
+                      <option value="Godparent">{t('Godparent')}</option>
+                      <option value="Parent-in-law">{t('Parent-in-law')}</option>
+                      <option value="Aunt/Uncle">{t('Aunt/Uncle')}</option>
                     </>
                  )}
                  {addingRelation?.category === 'Bottom' && (
                     <>
-                      <option value="Child">Child</option>
-                      <option value="Step-Child">Step-Child</option>
+                      <option value="Child">{t('Child')}</option>
+                      <option value="Step-Child">{t('Step-Child')}</option>
+                      <option value="Godchild">{t('Godchild')}</option>
+                      <option value="Child-in-law">{t('Child-in-law')}</option>
+                      <option value="Niece/Nephew">{t('Niece/Nephew')}</option>
                     </>
                  )}
                  {addingRelation?.category === 'Side' && (
                     <>
-                      <option value="Sibling">Sibling</option>
-                      <option value="Step-Sibling">Step-Sibling</option>
-                      <option value="Half-Sibling">Half-Sibling</option>
-                      <option value="Spouse">Spouse</option>
-                      <option value="Cousin">Cousin</option>
-                      <option value="Friend">Friend</option>
+                      <option value="Sibling">{t('Sibling')}</option>
+                      <option value="Step-Sibling">{t('Step-Sibling')}</option>
+                      <option value="Half-Sibling">{t('Half-Sibling')}</option>
+                      <option value="Spouse">{t('Spouse')}</option>
+                      <option value="Cousin">{t('Cousin')}</option>
+                      <option value="Sibling-in-law">{t('Sibling-in-law')}</option>
+                      <option value="Friend">{t('Friend')}</option>
+                      <option value="Other">{t('Other')}</option>
                     </>
                  )}
                </select>

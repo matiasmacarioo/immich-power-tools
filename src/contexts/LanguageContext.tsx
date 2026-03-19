@@ -31,6 +31,8 @@ const translations: Record<string, Record<Language, string>> = {
   'Sibling-in-law': { en: 'Sibling-in-law', es: 'Cuñado/a' },
   'Parent-in-law': { en: 'Parent-in-law', es: 'Suegro/a' },
   'Child-in-law': { en: 'Child-in-law', es: 'Yerno/Nuera' },
+  'Godparent': { en: 'Godparent', es: 'Padrino/Madrina' },
+  'Godchild': { en: 'Godchild', es: 'Ahijado/a' },
   'Friend': { en: 'Friend', es: 'Amigo/a' },
   'Other': { en: 'Other', es: 'Otro' },
   'are_Spouse': { en: 'are spouses', es: 'son esposos' },
