@@ -13,6 +13,8 @@ export default function ThemeSwitcher() {
   return (
     <button
       onClick={toggleTheme}
+      aria-label="Toggle theme"
+      title="Toggle theme"
       className={cn(
         "p-1 rounded-full transition-all duration-300 border border-primary text-primary",
       )}
