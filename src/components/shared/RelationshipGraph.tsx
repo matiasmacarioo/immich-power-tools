@@ -13,15 +13,28 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 const getEdgeColor = (type: string) => {
   switch (type) {
-    case 'Spouse': return '#ec4899'; // pink-500
+    case 'Spouse': return '#ec4899'; 
     case 'Sibling': 
     case 'Step-Sibling':
-    case 'Half-Sibling': return '#3b82f6'; // blue-500
+    case 'Half-Sibling': return '#3b82f6'; 
     case 'Parent':
     case 'Step-Parent':
-    case 'Child': return '#22c55e'; // green-500
-    case 'Cousin': return '#f97316'; // orange-500
-    default: return '#8b5cf6'; // violet-500
+    case 'Child': return '#22c55e'; 
+    case 'Cousin': return '#f97316'; 
+    case 'Grandparent':
+    case 'Grandchild': 
+    case 'Great-Grandparent':
+    case 'Great-Grandchild':
+    case 'Great-Great-Grandparent':
+    case 'Great-Great-Grandchild':
+    case 'Chosno-Ancestor':
+    case 'Chosno': return '#14b8a6'; 
+    case 'Aunt/Uncle':
+    case 'Niece/Nephew': return '#8b5cf6'; 
+    case 'Sibling-in-law':
+    case 'Parent-in-law':
+    case 'Child-in-law': return '#eab308'; 
+    default: return '#64748b'; 
   }
 };
 
@@ -660,34 +673,164 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
     }
   };
 
+  const findPath = useCallback((startId: string, endId: string, direction: 'up'|'down', maxDepth: number) => {
+      type QueueItem = { id: string, depth: number, path: string[] };
+      const queue: QueueItem[] = [{ id: startId, depth: 0, path: [startId] }];
+      const visited = new Set<string>([startId]);
+
+      while(queue.length > 0) {
+          const curr = queue.shift()!;
+          if (curr.depth > 0 && curr.id === endId) {
+             return curr; // found!
+          }
+          if (curr.depth < maxDepth) {
+              const nextIds = direction === 'up' ? getParents(curr.id) : getChildren(curr.id);
+              for (let nid of nextIds) {
+                  if (!visited.has(nid)) {
+                      visited.add(nid);
+                      queue.push({ id: nid, depth: curr.depth + 1, path: [...curr.path, nid] });
+                  }
+              }
+          }
+      }
+      return null;
+  }, [getParents, getChildren]);
+
+  const getInferredRelationship = useCallback((targetId: string, nodeId: string): { type: string, path: string[] } | null => {
+    if (targetId === nodeId) return null;
+    
+    // Explicit
+    const exactEdge = relationships.find(r => (r.person1Id === targetId && r.person2Id === nodeId) || (r.person2Id === targetId && r.person1Id === nodeId));
+    if (exactEdge) {
+       let relType = exactEdge.relationshipType;
+       if (relType === 'Child') relType = exactEdge.person1Id === targetId ? 'Parent' : 'Child';
+       return { type: relType, path: [targetId, nodeId] };
+    }
+
+    const tParents = getParents(targetId);
+    const tChildren = getChildren(targetId);
+    const tSpouses = getSpouses(targetId);
+    const tSiblings = getSiblings(targetId);
+
+    // Deep Ancestors (up to 5 levels)
+    const ancestorPath = findPath(targetId, nodeId, 'up', 5);
+    if (ancestorPath) {
+        if (ancestorPath.depth === 2) return { type: 'Grandparent', path: ancestorPath.path };
+        if (ancestorPath.depth === 3) return { type: 'Great-Grandparent', path: ancestorPath.path };
+        if (ancestorPath.depth === 4) return { type: 'Great-Great-Grandparent', path: ancestorPath.path };
+        if (ancestorPath.depth === 5) return { type: 'Chosno-Ancestor', path: ancestorPath.path };
+    }
+
+    // Deep Descendants
+    const descendantPath = findPath(targetId, nodeId, 'down', 5);
+    if (descendantPath) {
+        if (descendantPath.depth === 2) return { type: 'Grandchild', path: descendantPath.path };
+        if (descendantPath.depth === 3) return { type: 'Great-Grandchild', path: descendantPath.path };
+        if (descendantPath.depth === 4) return { type: 'Great-Great-Grandchild', path: descendantPath.path };
+        if (descendantPath.depth === 5) return { type: 'Chosno', path: descendantPath.path };
+    }
+    
+    // Aunt/Uncle
+    for (let p of tParents) {
+        if (getSiblings(p).includes(nodeId)) return { type: 'Aunt/Uncle', path: [targetId, p, nodeId] };
+        for (let psib of getSiblings(p)) {
+            if (getSpouses(psib).includes(nodeId)) return { type: 'Aunt/Uncle', path: [targetId, p, psib, nodeId] };
+        }
+    }
+
+    // Niece/Nephew
+    for (let s of tSiblings) {
+        if (getChildren(s).includes(nodeId)) return { type: 'Niece/Nephew', path: [targetId, s, nodeId] };
+    }
+    for (let sp of tSpouses) {
+        for (let spsib of getSiblings(sp)) {
+            if (getChildren(spsib).includes(nodeId)) return { type: 'Niece/Nephew', path: [targetId, sp, spsib, nodeId] };
+        }
+    }
+
+    // In-Laws
+    for (let s of tSiblings) {
+        if (getSpouses(s).includes(nodeId)) return { type: 'Sibling-in-law', path: [targetId, s, nodeId] };
+    }
+    for (let sp of tSpouses) {
+        if (getSiblings(sp).includes(nodeId)) return { type: 'Sibling-in-law', path: [targetId, sp, nodeId] };
+        if (getParents(sp).includes(nodeId)) return { type: 'Parent-in-law', path: [targetId, sp, nodeId] };
+    }
+    for (let c of tChildren) {
+        if (getSpouses(c).includes(nodeId)) return { type: 'Child-in-law', path: [targetId, c, nodeId] };
+    }
+
+    // Cousins
+    for (let p of tParents) {
+        for (let au of getSiblings(p)) {
+            if (getChildren(au).includes(nodeId)) return { type: 'Cousin', path: [targetId, p, au, nodeId] };
+            for (let sp of getSpouses(au)) {
+                if (getChildren(sp).includes(nodeId)) return { type: 'Cousin', path: [targetId, p, au, sp, nodeId] };
+            }
+        }
+    }
+
+    return null;
+  }, [relationships, getParents, getChildren, getSpouses, getSiblings, findPath]);
+
   const onNodeMouseEnter = useCallback((_: React.MouseEvent, node: Node) => {
+    const inferences = new Map<string, { type: string, path: string[] }>();
+    people.forEach(p => {
+       const inf = getInferredRelationship(node.id, p.id);
+       if (inf) inferences.set(p.id, inf);
+    });
+
     setEdges((eds) => eds.map((ed) => {
-      const isConnected = ed.source === node.id || ed.target === node.id;
-      const edgeType = ed.data?.type || ed.label;
+      const isDirectlyConnected = ed.source === node.id || ed.target === node.id;
+      let isPathEdge = isDirectlyConnected;
+      let computedEdgeColor = isDirectlyConnected ? getEdgeColor((ed.data?.type || ed.label) as string) : undefined;
+
+      if (!isPathEdge) {
+          for (const inf of Array.from(inferences.values())) {
+              const pNodes = inf.path;
+              for (let i = 0; i < pNodes.length - 1; i++) {
+                  if ((ed.source === pNodes[i] && ed.target === pNodes[i+1]) || 
+                      (ed.target === pNodes[i] && ed.source === pNodes[i+1])) {
+                      isPathEdge = true;
+                      computedEdgeColor = getEdgeColor(inf.type);
+                      break;
+                  }
+              }
+              if (isPathEdge) break;
+          }
+      }
+
       return {
         ...ed,
-        animated: isConnected,
+        animated: isPathEdge,
         style: {
-          strokeWidth: isConnected ? 3 : 1,
-          stroke: isConnected ? getEdgeColor(edgeType as string) : undefined,
-          opacity: isConnected ? 1 : 0.2,
+          strokeWidth: isPathEdge ? 3 : 1,
+          stroke: isPathEdge ? computedEdgeColor : undefined,
+          opacity: isPathEdge ? 1 : 0.2,
           transition: 'stroke-width 0.2s, stroke 0.2s, opacity 0.2s',
         },
       };
     }));
     
     setNodes((nds) => nds.map((n) => {
-      const connectedEdge = initialEdges.find(e => 
-        (e.source === node.id && e.target === n.id) || 
-        (e.target === node.id && e.source === n.id)
-      );
-      const isConnectedNode = n.id === node.id || connectedEdge;
+      let isConnectedNode = n.id === node.id;
+      let badgeLabel = undefined;
+      let badgeColor = undefined;
+      
+      const inferredRelation = inferences.get(n.id);
+      
+      if (inferredRelation) {
+          isConnectedNode = true;
+          badgeLabel = inferredRelation.type;
+          badgeColor = getEdgeColor(inferredRelation.type);
+      }
+
       return {
         ...n,
         data: {
           ...n.data,
-          hoverBadge: connectedEdge ? (connectedEdge.data?.label || connectedEdge.label) : undefined,
-          hoverColor: connectedEdge ? getEdgeColor((connectedEdge.data?.type || connectedEdge.label) as string) : undefined,
+          hoverBadge: badgeLabel ? t(badgeLabel) : undefined,
+          hoverColor: badgeColor,
         },
         style: {
            ...n.style,
@@ -696,7 +839,7 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
         }
       };
     }));
-  }, [setEdges, setNodes, initialEdges]);
+  }, [setEdges, setNodes, getInferredRelationship, t, people]);
 
   const onNodeMouseLeave = useCallback(() => {
     setEdges((eds) => eds.map((ed) => {
