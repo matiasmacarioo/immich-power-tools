@@ -560,7 +560,18 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
             orderedGroups.push(...groupSeq);
         });
 
-        let currentX = dagreGraph.node(orderedGroups[0][0].id).x - nodeWidth / 2;
+        let rankMinX = Infinity;
+        let rankMaxX = -Infinity;
+        for (const sg of orderedGroups) {
+            for (const n of sg) {
+                const dx = dagreGraph.node(n.id).x - nodeWidth / 2;
+                if (dx < rankMinX) rankMinX = dx;
+                if (dx > rankMaxX) rankMaxX = dx;
+            }
+        }
+
+        const rankMap = new Map();
+        let simulatedX = rankMinX;
 
         for (let i = 0; i < orderedGroups.length; i++) {
            const sg = orderedGroups[i];
@@ -573,24 +584,33 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
 
            for (let j = 0; j < sg.length; j++) {
                const node = sg[j];
-
-               node.data = { ...node.data, roundedClass: 'rounded-xl' };
-
-               layoutedNodes.push({
-                   ...node,
-                   position: { x: currentX, y: y - nodeHeight / 2 }
-               });
+               rankMap.set(node.id, simulatedX);
                
                const isLastSpouse = j === sg.length - 1;
 
                if (!isLastSpouse) {
-                   currentX += nodeWidth + 20; // Tight explicitly contextual gap for Spouse
+                   simulatedX += nodeWidth + 20; // 20px Spouse spacing
                } else if (isLinkedToNextSibling) {
-                   currentX += nodeWidth + 40; // Moderate margin bridging Sibling groups
+                   simulatedX += nodeWidth + 40; // 40px Sibling spacing
                } else if (nextSg) {
-                   const originalDagreX = dagreGraph.node(nextSg[0].id).x - nodeWidth / 2;
-                   currentX = Math.max(currentX + nodeWidth + 120, originalDagreX); // Massive padding bounding different families
+                   simulatedX += nodeWidth + 100; // 100px explicit compact pyramid gap bounding different structural families natively!
                }
+           }
+        }
+
+        // Center the compacted generation under its Dagre parents' native topological bounds!
+        const compactWidth = simulatedX - rankMinX;
+        const dagreWidth = rankMaxX - rankMinX;
+        const offset = Math.max(0, (dagreWidth - compactWidth) / 2);
+
+        for (let i = 0; i < orderedGroups.length; i++) {
+           for (let j = 0; j < orderedGroups[i].length; j++) {
+               const node = orderedGroups[i][j];
+               node.data = { ...node.data, roundedClass: 'rounded-xl' };
+               layoutedNodes.push({
+                   ...node,
+                   position: { x: rankMap.get(node.id) + offset, y: y - nodeHeight / 2 }
+               });
            }
         }
     });
