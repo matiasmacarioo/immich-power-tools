@@ -58,7 +58,10 @@ const PersonNode = ({ id, data }: any) => {
     }
   };
 
-  const { isFusedRight, isFusedLeft, hoverColor } = data;
+  const { fusedRightType, fusedLeftType, hoverColor } = data;
+  const isFusedRight = !!fusedRightType;
+  const isFusedLeft = !!fusedLeftType;
+  
   let computedRounded = data.roundedClass || 'rounded-xl';
   if (isFusedRight && isFusedLeft) computedRounded = 'rounded-none border-x-0';
   else if (isFusedRight) computedRounded = 'rounded-l-xl rounded-r-none border-r-0';
@@ -75,9 +78,11 @@ const PersonNode = ({ id, data }: any) => {
       transition: `${colorTrans}, ${radiusTrans}, ${bgTrans}`
   };
 
+  const targetWidth = fusedRightType === 'Spouse' ? '22px' : '42px';
+
   const bridgeStyle = {
       left: 'calc(100% - 1px)',
-      width: isFusedRight ? '42px' : '0px',
+      width: isFusedRight ? targetWidth : '0px',
       opacity: isFusedRight ? 1 : 0,
       borderTopWidth: '1px',
       borderBottomWidth: '1px',
@@ -595,11 +600,14 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
             if (i === j) continue;
             const n1 = layoutedNodes[i];
             const n2 = layoutedNodes[j];
-            if (n1.position.y === n2.position.y && isSibling(n1.id, n2.id)) {
+            if (n1.position.y === n2.position.y) {
                 const distance = n2.position.x - (n1.position.x + nodeWidth);
-                if (distance >= 35 && distance <= 45) {
+                if (isSibling(n1.id, n2.id) && distance >= 35 && distance <= 50) {
                     n1.data = { ...n1.data, adjacentSiblingId: n2.id };
                     n2.data = { ...n2.data, prevSiblingId: n1.id };
+                } else if (isSpouse(n1.id, n2.id) && distance >= 15 && distance <= 25) {
+                    n1.data = { ...n1.data, adjacentSpouseId: n2.id };
+                    n2.data = { ...n2.data, prevSpouseId: n1.id };
                 }
             }
         }
@@ -921,18 +929,29 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
           badgeColor = '#e2e8f0'; // Clean slate-200 distinct highlighting for self
       }
       
-      let isFusedRight = false;
-      let isFusedLeft = false;
+      let fusedRightType: string | null = null;
+      let fusedLeftType: string | null = null;
       
       if (isConnectedNode && n.data.adjacentSiblingId && highlightedIds.has(n.data.adjacentSiblingId as string)) {
-          isFusedRight = true;
-      }
-      if (isConnectedNode && n.data.prevSiblingId && highlightedIds.has(n.data.prevSiblingId as string)) {
-          isFusedLeft = true;
+          fusedRightType = 'Sibling';
+      } else if (isConnectedNode && n.data.adjacentSpouseId && highlightedIds.has(n.data.adjacentSpouseId as string)) {
+          fusedRightType = 'Spouse';
       }
 
-      if (isConnectedNode && !inferredRelation && (isFusedRight || isFusedLeft)) {
-          badgeColor = getEdgeColor('Sibling');
+      if (isConnectedNode && n.data.prevSiblingId && highlightedIds.has(n.data.prevSiblingId as string)) {
+          fusedLeftType = 'Sibling';
+      } else if (isConnectedNode && n.data.prevSpouseId && highlightedIds.has(n.data.prevSpouseId as string)) {
+          fusedLeftType = 'Spouse';
+      }
+
+      const anyFusion = fusedRightType || fusedLeftType;
+
+      if (isConnectedNode && !inferredRelation && anyFusion) {
+          if (fusedRightType === 'Sibling' || fusedLeftType === 'Sibling') {
+              badgeColor = getEdgeColor('Sibling');
+          } else {
+              badgeColor = getEdgeColor('Spouse');
+          }
       }
 
       return {
@@ -941,8 +960,8 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
           ...n.data,
           hoverBadge: badgeLabel ? t(badgeLabel) : undefined,
           hoverColor: badgeColor,
-          isFusedRight,
-          isFusedLeft
+          fusedRightType,
+          fusedLeftType
         },
         style: {
            ...n.style,
@@ -974,8 +993,8 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
         ...n.data,
         hoverBadge: undefined,
         hoverColor: undefined,
-        isFusedRight: false,
-        isFusedLeft: false
+        fusedRightType: null,
+        fusedLeftType: null
       },
       style: {
         ...n.style,
