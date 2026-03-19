@@ -1,0 +1,28 @@
+export const getEdgeColor = (type: string): string => {
+  switch (type) {
+    case 'Spouse': return '#ec4899';
+    case 'Sibling':
+    case 'Step-Sibling':
+    case 'Half-Sibling': return '#3b82f6';
+    case 'Parent':
+    case 'Step-Parent':
+    case 'Child': return '#22c55e';
+    case 'Cousin': return '#f97316';
+    case 'Grandparent':
+    case 'Grandchild':
+    case 'Great-Grandparent':
+    case 'Great-Grandchild':
+    case 'Great-Great-Grandparent':
+    case 'Great-Great-Grandchild':
+    case 'Chosno-Ancestor':
+    case 'Chosno': return '#14b8a6';
+    case 'Aunt/Uncle':
+    case 'Niece/Nephew': return '#8b5cf6';
+    case 'Godparent':
+    case 'Godchild': return '#0ea5e9';
+    case 'Sibling-in-law':
+    case 'Parent-in-law':
+    case 'Child-in-law': return '#eab308';
+    default: return '#64748b';
+  }
+};
