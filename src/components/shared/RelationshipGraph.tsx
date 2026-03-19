@@ -636,7 +636,10 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
     }
 
     // Remap handles dynamically computing optimal geometric short-paths
-    const layoutedEdges = Array.from(normalizedEdges.values()).map((edge) => {
+    const coreRels = ['Parent', 'Step-Parent', 'Child', 'Step-Child', 'Spouse', 'Sibling', 'Step-Sibling', 'Half-Sibling'];
+    const layoutedEdges = Array.from(normalizedEdges.values())
+      .filter(edge => coreRels.includes(edge.label as string))
+      .map((edge) => {
       let sourceHandle = 's-bottom';
       let targetHandle = 't-top';
 
@@ -651,7 +654,7 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
              sourceHandle = 's-left';
              targetHandle = 't-right';
           }
-      } else if (['Godparent', 'Godchild', 'Aunt/Uncle', 'Niece/Nephew'].includes(edge.label as string)) {
+      } else if (['Godparent', 'Godchild', 'Aunt/Uncle', 'Niece/Nephew', 'Parent-in-law', 'Child-in-law'].includes(edge.label as string)) {
           sourceHandle = 's-top';
           targetHandle = 't-top';
       }
@@ -826,10 +829,15 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
     
     // Explicit
     const exactEdge = relationships.find(r => (r.person1Id === targetId && r.person2Id === nodeId) || (r.person2Id === targetId && r.person1Id === nodeId));
+    let explicitType: string | null = null;
+    
     if (exactEdge) {
-       let relType = exactEdge.relationshipType;
-       if (relType === 'Child') relType = exactEdge.person1Id === targetId ? 'Parent' : 'Child';
-       return { type: relType, path: [targetId, nodeId] };
+       explicitType = exactEdge.relationshipType;
+       if (explicitType === 'Child') explicitType = exactEdge.person1Id === targetId ? 'Parent' : 'Child';
+       
+       if (explicitType && ['Parent', 'Child', 'Spouse', 'Sibling', 'Step-Sibling', 'Half-Sibling'].includes(explicitType)) {
+           return { type: explicitType, path: [targetId, nodeId] };
+       }
     }
 
     const tParents = getParents(targetId);
@@ -837,62 +845,75 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
     const tSpouses = getSpouses(targetId);
     const tSiblings = getSiblings(targetId);
 
-    // Deep Ancestors (up to 5 levels)
-    const ancestorPath = findPath(targetId, nodeId, 'up', 5);
-    if (ancestorPath) {
-        if (ancestorPath.depth === 2) return { type: 'Grandparent', path: ancestorPath.path };
-        if (ancestorPath.depth === 3) return { type: 'Great-Grandparent', path: ancestorPath.path };
-        if (ancestorPath.depth === 4) return { type: 'Great-Great-Grandparent', path: ancestorPath.path };
-        if (ancestorPath.depth === 5) return { type: 'Chosno-Ancestor', path: ancestorPath.path };
-    }
-
-    // Deep Descendants
-    const descendantPath = findPath(targetId, nodeId, 'down', 5);
-    if (descendantPath) {
-        if (descendantPath.depth === 2) return { type: 'Grandchild', path: descendantPath.path };
-        if (descendantPath.depth === 3) return { type: 'Great-Grandchild', path: descendantPath.path };
-        if (descendantPath.depth === 4) return { type: 'Great-Great-Grandchild', path: descendantPath.path };
-        if (descendantPath.depth === 5) return { type: 'Chosno', path: descendantPath.path };
-    }
-    
-    // Aunt/Uncle
-    for (let p of tParents) {
-        if (getSiblings(p).includes(nodeId)) return { type: 'Aunt/Uncle', path: [targetId, p, nodeId] };
-        for (let psib of getSiblings(p)) {
-            if (getSpouses(psib).includes(nodeId)) return { type: 'Aunt/Uncle', path: [targetId, p, psib, nodeId] };
+    const findBiologicalRelation = (): { type: string, path: string[] } | null => {
+        // Deep Ancestors (up to 5 levels)
+        const ancestorPath = findPath(targetId, nodeId, 'up', 5);
+        if (ancestorPath) {
+            if (ancestorPath.depth === 2) return { type: 'Grandparent', path: ancestorPath.path };
+            if (ancestorPath.depth === 3) return { type: 'Great-Grandparent', path: ancestorPath.path };
+            if (ancestorPath.depth === 4) return { type: 'Great-Great-Grandparent', path: ancestorPath.path };
+            if (ancestorPath.depth === 5) return { type: 'Chosno-Ancestor', path: ancestorPath.path };
         }
-    }
 
-    // Niece/Nephew
-    for (let s of tSiblings) {
-        if (getChildren(s).includes(nodeId)) return { type: 'Niece/Nephew', path: [targetId, s, nodeId] };
-    }
-    for (let sp of tSpouses) {
-        for (let spsib of getSiblings(sp)) {
-            if (getChildren(spsib).includes(nodeId)) return { type: 'Niece/Nephew', path: [targetId, sp, spsib, nodeId] };
+        // Deep Descendants
+        const descendantPath = findPath(targetId, nodeId, 'down', 5);
+        if (descendantPath) {
+            if (descendantPath.depth === 2) return { type: 'Grandchild', path: descendantPath.path };
+            if (descendantPath.depth === 3) return { type: 'Great-Grandchild', path: descendantPath.path };
+            if (descendantPath.depth === 4) return { type: 'Great-Great-Grandchild', path: descendantPath.path };
+            if (descendantPath.depth === 5) return { type: 'Chosno', path: descendantPath.path };
         }
-    }
-
-    // In-Laws
-    for (let s of tSiblings) {
-        if (getSpouses(s).includes(nodeId)) return { type: 'Sibling-in-law', path: [targetId, s, nodeId] };
-    }
-    for (let sp of tSpouses) {
-        if (getSiblings(sp).includes(nodeId)) return { type: 'Sibling-in-law', path: [targetId, sp, nodeId] };
-        if (getParents(sp).includes(nodeId)) return { type: 'Parent-in-law', path: [targetId, sp, nodeId] };
-    }
-    for (let c of tChildren) {
-        if (getSpouses(c).includes(nodeId)) return { type: 'Child-in-law', path: [targetId, c, nodeId] };
-    }
-
-    // Cousins
-    for (let p of tParents) {
-        for (let au of getSiblings(p)) {
-            if (getChildren(au).includes(nodeId)) return { type: 'Cousin', path: [targetId, p, au, nodeId] };
-            for (let sp of getSpouses(au)) {
-                if (getChildren(sp).includes(nodeId)) return { type: 'Cousin', path: [targetId, p, au, sp, nodeId] };
+        
+        // Aunt/Uncle
+        for (let p of tParents) {
+            if (getSiblings(p).includes(nodeId)) return { type: 'Aunt/Uncle', path: [targetId, p, nodeId] };
+            for (let psib of getSiblings(p)) {
+                if (getSpouses(psib).includes(nodeId)) return { type: 'Aunt/Uncle', path: [targetId, p, psib, nodeId] };
             }
         }
+
+        // Niece/Nephew
+        for (let s of tSiblings) {
+            if (getChildren(s).includes(nodeId)) return { type: 'Niece/Nephew', path: [targetId, s, nodeId] };
+        }
+        for (let sp of tSpouses) {
+            for (let spsib of getSiblings(sp)) {
+                if (getChildren(spsib).includes(nodeId)) return { type: 'Niece/Nephew', path: [targetId, sp, spsib, nodeId] };
+            }
+        }
+
+        // In-Laws
+        for (let s of tSiblings) {
+            if (getSpouses(s).includes(nodeId)) return { type: 'Sibling-in-law', path: [targetId, s, nodeId] };
+        }
+        for (let sp of tSpouses) {
+            if (getSiblings(sp).includes(nodeId)) return { type: 'Sibling-in-law', path: [targetId, sp, nodeId] };
+            if (getParents(sp).includes(nodeId)) return { type: 'Parent-in-law', path: [targetId, sp, nodeId] };
+        }
+        for (let c of tChildren) {
+            if (getSpouses(c).includes(nodeId)) return { type: 'Child-in-law', path: [targetId, c, nodeId] };
+        }
+
+        // Cousins
+        for (let p of tParents) {
+            for (let au of getSiblings(p)) {
+                if (getChildren(au).includes(nodeId)) return { type: 'Cousin', path: [targetId, p, au, nodeId] };
+                for (let sp of getSpouses(au)) {
+                    if (getChildren(sp).includes(nodeId)) return { type: 'Cousin', path: [targetId, p, au, sp, nodeId] };
+                }
+            }
+        }
+
+        return null;
+    };
+
+    const bioRel = findBiologicalRelation();
+    if (bioRel) {
+        return { type: explicitType || bioRel.type, path: bioRel.path };
+    }
+
+    if (explicitType) {
+        return { type: explicitType, path: [targetId, nodeId] }; // fallback to direct edge if completely disconnected biologically
     }
 
     return null;
