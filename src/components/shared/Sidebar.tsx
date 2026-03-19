@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight, Languages } from "lucide-react";
 
 import dynamic from "next/dynamic";
 import ProfileInfo from "./ProfileInfo";
+import ChangelogDialog from "./ChangelogDialog";
 
 const ThemeSwitcher = dynamic(() => import("@/components/shared/ThemeSwitcher"), {
   ssr: false,
@@ -18,6 +19,7 @@ export default function Sidebar() {
   const router = useRouter();
   const { pathname } = router;
   const [collapsed, setCollapsed] = useState(false);
+  const [changelogOpen, setChangelogOpen] = useState(false);
   const { lang, setLang } = useLanguage();
 
   return (
@@ -35,7 +37,13 @@ export default function Sidebar() {
             {!collapsed && (
               <div className="flex flex-col">
                 <span className="text-sm leading-tight">Power Tools</span>
-                <span className="text-[10px] text-muted-foreground bg-muted px-1.5 rounded-md font-mono w-fit">v{packageJson.version}</span>
+                <button
+                  onClick={(e) => { e.preventDefault(); setChangelogOpen(true); }}
+                  className="text-[10px] text-muted-foreground bg-muted px-1.5 rounded-md font-mono w-fit hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer"
+                  title="View changelog"
+                >
+                  v{packageJson.version}
+                </button>
               </div>
             )}
           </Link>
@@ -87,6 +95,7 @@ export default function Sidebar() {
           {!collapsed && <ProfileInfo />}
         </div>
       </div>
+      <ChangelogDialog open={changelogOpen} onClose={() => setChangelogOpen(false)} />
     </div>
   );
 }
