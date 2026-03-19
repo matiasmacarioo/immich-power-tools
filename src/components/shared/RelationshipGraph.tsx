@@ -15,6 +15,9 @@ import PersonNode from '../tree/PersonNode';
 import CustomEdge from '../tree/CustomEdge';
 import { buildLayoutedGraph } from '../tree/layoutEngine';
 import { buildRelationshipHelpers } from '../tree/inferenceEngine';
+import { getPersonAssets } from '@/handlers/api/person.handler';
+import AssetGrid from './AssetGrid';
+import { IAsset } from '@/types/asset';
 
 interface RelationshipGraphProps {
   relationships: any[];
@@ -33,6 +36,12 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
   const [edgeToDelete, setEdgeToDelete] = useState<Edge | null>(null);
   const [selectedPersonForAdd, setSelectedPersonForAdd] = useState<string[]>([]);
   const [selectedRelType, setSelectedRelType] = useState<string>('');
+
+  const [selectedPersonPhotos, setSelectedPersonPhotos] = useState<{ id: string; name: string } | null>(null);
+  const [personPhotos, setPersonPhotos] = useState<IAsset[]>([]);
+  const [loadingPhotos, setLoadingPhotos] = useState(false);
+  const [photosPage, setPhotosPage] = useState(1);
+  const [hasMorePhotos, setHasMorePhotos] = useState(true);
 
   const peopleMap = useMemo(() => {
     const map: Record<string, IPerson> = {};
@@ -257,6 +266,30 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
     })));
   }, [setEdges, setNodes]);
 
+  const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
+    setSelectedPersonPhotos({ id: node.id, name: node.data.label as string });
+    setPhotosPage(1);
+    setPersonPhotos([]);
+    setHasMorePhotos(true);
+  }, []);
+
+  useEffect(() => {
+    if (selectedPersonPhotos) {
+      setLoadingPhotos(true);
+      getPersonAssets(selectedPersonPhotos.id, photosPage)
+        .then((assets) => {
+          if (photosPage === 1) {
+            setPersonPhotos(assets);
+          } else {
+            setPersonPhotos((prev) => [...prev, ...assets]);
+          }
+          setHasMorePhotos(assets.length === 100);
+        })
+        .catch(() => toast.error('Failed to load photos'))
+        .finally(() => setLoadingPhotos(false));
+    }
+  }, [selectedPersonPhotos, photosPage]);
+
   const onEdgeMouseEnter = useCallback((_: React.MouseEvent, edge: Edge) => {
     setEdges((eds) => eds.map((ed) => {
       const isHovered = ed.id === edge.id;
@@ -302,6 +335,7 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
         edgeTypes={edgeTypes}
         fitView
         onConnect={handleConnect}
+        onNodeClick={onNodeClick}
         onEdgeContextMenu={handleEdgeContextMenu}
         colorMode={theme === 'dark' ? 'dark' : 'light'}
       >
@@ -398,6 +432,43 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setEdgeToDelete(null)}>{t('Cancel')}</Button>
             <Button variant="destructive" onClick={confirmDeleteEdge}>{t('Delete')}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Person photos dialog */}
+      <Dialog open={!!selectedPersonPhotos} onOpenChange={(open) => !open && setSelectedPersonPhotos(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col !p-6">
+          <DialogHeader>
+            <DialogTitle>{selectedPersonPhotos?.name}&apos;s Photos</DialogTitle>
+            <DialogDescription>Photos ordered by date.</DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto mt-4 min-h-[400px]">
+            {loadingPhotos && photosPage === 1 ? (
+              <div className="flex justify-center items-center h-full">Loading...</div>
+            ) : personPhotos.length > 0 ? (
+              <div className="flex flex-col gap-4">
+                <AssetGrid
+                  assets={personPhotos}
+                  isInternal={true}
+                  selectable={false}
+                />
+                {hasMorePhotos && (
+                  <Button
+                    variant="outline"
+                    className="w-full mt-4"
+                    onClick={() => setPhotosPage(p => p + 1)}
+                    disabled={loadingPhotos}
+                  >
+                    {loadingPhotos ? "Loading..." : "Load More"}
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="flex justify-center items-center h-full text-muted-foreground">
+                No photos found.
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
