@@ -115,6 +115,7 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
   const { t } = useLanguage();
   
   const [addingRelation, setAddingRelation] = useState<{ personId: string, relType: string, category: string, personName: string } | null>(null);
+  const [edgeToDelete, setEdgeToDelete] = useState<Edge | null>(null);
   const [selectedPersonForAdd, setSelectedPersonForAdd] = useState<string[]>([]);
   const [selectedRelType, setSelectedRelType] = useState<string>('');
 
@@ -593,30 +594,31 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
     }
   }, [onAddVisual]);
 
-  const handleEdgeContextMenu = useCallback(async (event: React.MouseEvent, edge: Edge) => {
-    event.preventDefault();
-    if (edge.animated) {
-      toast.error('This is an inferred relationship! Delete the explicit relationship that generated it instead.');
-      return;
-    }
+  const handleEdgeContextMenu = useCallback((e: React.MouseEvent, edge: Edge) => {
+    e.preventDefault();
     if (!edge.data?.realId) return;
+    setEdgeToDelete(edge);
+  }, []);
 
-    if (confirm(`Remove the explicitly added '${edge.label}' relationship between these people?`)) {
-      try {
-        const res = await fetch(`/api/relationships/${edge.data.realId}`, {
-          method: 'DELETE',
-        });
-        if (res.ok) {
-          toast.success('Relationship successfully purged!');
-          if (onAddVisual) onAddVisual();
-        } else {
-          toast.error('Failed to delete relationship.');
-        }
-      } catch {
-        toast.error('Error contacting server.');
+  const confirmDeleteEdge = async () => {
+    if (!edgeToDelete?.data?.realId) return;
+
+    try {
+      const res = await fetch(`/api/relationships/${edgeToDelete.data.realId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        toast.success(t('Relationship successfully purged!'));
+        if (onAddVisual) onAddVisual();
+      } else {
+        toast.error(t('Failed to delete relationship.'));
       }
+    } catch {
+      toast.error(t('Error contacting server.'));
+    } finally {
+      setEdgeToDelete(null);
     }
-  }, [onAddVisual]);
+  };
 
   const submitManualAdd = async () => {
     if (!addingRelation || selectedPersonForAdd.length === 0) return;
@@ -721,6 +723,40 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
     })));
   }, [setEdges, setNodes]);
 
+  const onEdgeMouseEnter = useCallback((_: React.MouseEvent, edge: Edge) => {
+    setEdges((eds) => eds.map((ed) => {
+      const isHovered = ed.id === edge.id;
+      const edgeType = ed.data?.type || ed.label;
+      return {
+        ...ed,
+        animated: isHovered,
+        style: {
+          strokeWidth: isHovered ? 3 : 1,
+          stroke: isHovered ? getEdgeColor(edgeType as string) : undefined,
+          opacity: isHovered ? 1 : 0.2,
+          transition: 'stroke-width 0.2s, stroke 0.2s, opacity 0.2s',
+        },
+      };
+    }));
+    
+    setNodes((nds) => nds.map((n) => {
+      const isConnectedNode = n.id === edge.source || n.id === edge.target;
+      return {
+        ...n,
+        data: {
+          ...n.data,
+          hoverBadge: isConnectedNode ? (edge.data?.label || edge.label) : undefined,
+          hoverColor: isConnectedNode ? getEdgeColor((edge.data?.type || edge.label) as string) : undefined,
+        },
+        style: {
+           ...n.style,
+           opacity: isConnectedNode ? 1 : 0.4,
+           transition: 'opacity 0.2s',
+        }
+      };
+    }));
+  }, [setEdges, setNodes]);
+
   const onEdgeClick = useCallback((_: React.MouseEvent, edge: Edge) => {
     // Optional: Add functionality for edge click, e.g., showing edge details
     console.log('Edge clicked:', edge);
@@ -735,6 +771,8 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
         onEdgesChange={onEdgesChange}
         onNodeMouseEnter={onNodeMouseEnter}
         onNodeMouseLeave={onNodeMouseLeave}
+        onEdgeMouseEnter={onEdgeMouseEnter}
+        onEdgeMouseLeave={onNodeMouseLeave}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
@@ -828,6 +866,19 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
             >
               Save Relationship
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!edgeToDelete} onOpenChange={(open) => !open && setEdgeToDelete(null)}>
+        <DialogContent className="max-w-sm !p-6">
+          <DialogHeader>
+            <DialogTitle>{t('Delete')}</DialogTitle>
+            <DialogDescription>{t('Are you sure you want to remove this connection?')}</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 mt-4">
+             <Button variant="outline" onClick={() => setEdgeToDelete(null)}>{t('Cancel')}</Button>
+             <Button variant="destructive" onClick={confirmDeleteEdge}>{t('Delete')}</Button>
           </div>
         </DialogContent>
       </Dialog>

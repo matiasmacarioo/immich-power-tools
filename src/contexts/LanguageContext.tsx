@@ -35,6 +35,9 @@ const translations: Record<string, Record<Language, string>> = {
   'Please fill all fields': { en: 'Please fill all fields', es: 'Por favor completa todos los campos' },
   'Cannot create relationship with themselves': { en: 'Cannot create relationship with themselves', es: 'No pueden tener relación consigo mismos' },
   'Relationship added!': { en: 'Relationship added!', es: '¡Relación añadida!' },
+  'Are you sure you want to remove this connection?': { en: 'Are you sure you want to remove this connection?', es: '¿Seguro que quieres eliminar esta conexión?' },
+  'Delete': { en: 'Delete', es: 'Eliminar' },
+  'Cancel': { en: 'Cancel', es: 'Cancelar' },
 };
 
 const LanguageContext = createContext<LanguageContextType>({
