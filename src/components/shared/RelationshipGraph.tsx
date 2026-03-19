@@ -431,13 +431,17 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
 
     dagre.layout(dagreGraph);
 
-    const checkMates = (n1: string, n2: string) => {
+    const isSpouse = (n1: string, n2: string) => {
         const edge1 = normalizedEdges.get(`${n1}-${n2}`);
         const edge2 = normalizedEdges.get(`${n2}-${n1}`);
-        // We only allow immediate nuclear family members natively on the same rank (Spouses and Siblings) to form Combined Cards.
-        // Allowing extended relations like Cousins causes separate sibling groups to glue together across family boundaries!
-        if (edge1 && ['Spouse', 'Sibling', 'Step-Sibling', 'Half-Sibling'].includes(edge1.label as string)) return true;
-        if (edge2 && ['Spouse', 'Sibling', 'Step-Sibling', 'Half-Sibling'].includes(edge2.label as string)) return true;
+        return (edge1 && edge1.label === 'Spouse') || (edge2 && edge2.label === 'Spouse');
+    };
+
+    const isSibling = (n1: string, n2: string) => {
+        const edge1 = normalizedEdges.get(`${n1}-${n2}`);
+        const edge2 = normalizedEdges.get(`${n2}-${n1}`);
+        if (edge1 && ['Sibling', 'Step-Sibling', 'Half-Sibling'].includes(edge1.label as string)) return true;
+        if (edge2 && ['Sibling', 'Step-Sibling', 'Half-Sibling'].includes(edge2.label as string)) return true;
 
         const p1 = getParents(n1);
         const p2 = getParents(n2);
@@ -467,74 +471,118 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
     });
 
     Array.from(ranks.keys()).sort((a,b)=>a-b).forEach(y => {
-        const rankNodes = ranks.get(y)!;
-        rankNodes.sort((a,b) => dagreGraph.node(a.id).x - dagreGraph.node(b.id).x);
+        const rawRankNodes = ranks.get(y)!;
+        rawRankNodes.sort((a,b) => dagreGraph.node(a.id).x - dagreGraph.node(b.id).x);
 
-        let currentX = dagreGraph.node(rankNodes[0].id).x - nodeWidth / 2;
+        const spouseGroups: Node[][] = [];
+        const processedSpouses = new Set<string>();
 
-        for (let i = 0; i < rankNodes.length; i++) {
-           const node = rankNodes[i];
-           const nextNode = rankNodes[i+1];
+        rawRankNodes.forEach(node => {
+            if (processedSpouses.has(node.id)) return;
+            const group = [node];
+            processedSpouses.add(node.id);
+            
+            for (let n of rawRankNodes) {
+                if (!processedSpouses.has(n.id) && isSpouse(node.id, n.id)) {
+                    group.push(n);
+                    processedSpouses.add(n.id);
+                }
+            }
+
+            group.sort((a,b) => {
+                const aP = getParents(a.id).length;
+                const bP = getParents(b.id).length;
+                if (aP !== bP) return bP - aP; 
+                return dagreGraph.node(a.id).x - dagreGraph.node(b.id).x;
+            });
+
+            spouseGroups.push(group);
+        });
+
+        const orderedGroups: Node[][] = [];
+        const processedGroups = new Set<Node[]>();
+
+        spouseGroups.forEach(sg => {
+            if (processedGroups.has(sg)) return;
+            
+            const groupSeq = [sg];
+            const queue = [sg];
+            processedGroups.add(sg);
+            
+            while(queue.length > 0) {
+               const currSg = queue.shift()!;
+               const mates = spouseGroups.filter(targetSg => {
+                   if (processedGroups.has(targetSg)) return false;
+                   return currSg.some(currNode => targetSg.some(targetNode => isSibling(currNode.id, targetNode.id)));
+               });
+
+               mates.sort((a,b) => dagreGraph.node(a[0].id).x - dagreGraph.node(b[0].id).x);
+               mates.forEach(m => {
+                   processedGroups.add(m);
+                   groupSeq.push(m);
+                   queue.push(m);
+               });
+            }
+            orderedGroups.push(...groupSeq);
+        });
+
+        let currentX = dagreGraph.node(orderedGroups[0][0].id).x - nodeWidth / 2;
+
+        for (let i = 0; i < orderedGroups.length; i++) {
+           const sg = orderedGroups[i];
+           const nextSg = orderedGroups[i+1];
            
-           let isLinkedToNext = false;
-           if (nextNode && checkMates(node.id, nextNode.id)) {
-               const dNodeX = dagreGraph.node(node.id).x;
-               const dNextX = dagreGraph.node(nextNode.id).x;
-               // Dagre spaces adjacent siblings roughly nodeWidth + nodesep apart.
-               // We only snap horizontally if dagre positioned them relatively nearby natively.
-               if (dNextX - dNodeX < nodeWidth * 1.8) {
-                   isLinkedToNext = true;
+           let isLinkedToNextSibling = false;
+           if (nextSg && sg.some(s1 => nextSg.some(s2 => isSibling(s1.id, s2.id)))) {
+               isLinkedToNextSibling = true;
+           }
+
+           for (let j = 0; j < sg.length; j++) {
+               const node = sg[j];
+
+               node.data = { ...node.data, roundedClass: 'rounded-xl' };
+
+               layoutedNodes.push({
+                   ...node,
+                   position: { x: currentX, y: y - nodeHeight / 2 }
+               });
+               
+               const isLastSpouse = j === sg.length - 1;
+
+               if (!isLastSpouse) {
+                   currentX += nodeWidth + 20; // Tight explicitly contextual gap for Spouse
+               } else if (isLinkedToNextSibling) {
+                   currentX += nodeWidth + 40; // Moderate margin bridging Sibling groups
+               } else if (nextSg) {
+                   const originalDagreX = dagreGraph.node(nextSg[0].id).x - nodeWidth / 2;
+                   currentX = Math.max(currentX + nodeWidth + 120, originalDagreX); // Massive padding bounding different families
                }
-           }
-
-           const isLinkedToPrev = i > 0 && rankNodes[i-1].data.linkedToNext;
-
-           let roundedClass = 'rounded-lg';
-           if (isLinkedToPrev && isLinkedToNext) {
-               roundedClass = 'rounded-none border-x-0';
-           } else if (isLinkedToPrev && !isLinkedToNext) {
-               roundedClass = 'rounded-l-none rounded-r-lg border-l-0';
-           } else if (!isLinkedToPrev && isLinkedToNext) {
-               roundedClass = 'rounded-r-none rounded-l-lg border-r-0';
-           }
-
-           node.data = { ...node.data, roundedClass, linkedToNext: isLinkedToNext };
-
-           layoutedNodes.push({
-               ...node,
-               position: { x: currentX, y: y - nodeHeight / 2 }
-           });
-
-           if (isLinkedToNext) {
-               currentX += nodeWidth; // Instantly snap identically next to each other
-           } else if (nextNode) {
-               const nextOriginalX = dagreGraph.node(nextNode.id).x - nodeWidth / 2;
-               currentX = Math.max(currentX + nodeWidth + 40, nextOriginalX);
            }
         }
     });
 
-    // Remap handles dynamically based on actual positions
+    // Remap handles dynamically computing optimal geometric short-paths
     const layoutedEdges = Array.from(normalizedEdges.values()).map((edge) => {
-      if (['Sibling', 'Spouse', 'Friend', 'Cousin', 'Step-Sibling'].includes(edge.label as string)) {
-        const sourceNode = layoutedNodes.find(n => n.id === edge.source);
-        const targetNode = layoutedNodes.find(n => n.id === edge.target);
-        if (sourceNode && targetNode) {
+      let sourceHandle = 's-bottom';
+      let targetHandle = 't-top';
+
+      const sourceNode = layoutedNodes.find(n => n.id === edge.source);
+      const targetNode = layoutedNodes.find(n => n.id === edge.target);
+
+      if (sourceNode && targetNode && ['Sibling', 'Spouse', 'Friend', 'Cousin', 'Step-Sibling', 'Half-Sibling'].includes(edge.label as string)) {
           if (sourceNode.position.x < targetNode.position.x) {
-            edge.sourceHandle = 's-right';
-            edge.targetHandle = 't-left';
+             sourceHandle = 's-right';
+             targetHandle = 't-left';
           } else {
-            edge.sourceHandle = 's-left';
-            edge.targetHandle = 't-right';
+             sourceHandle = 's-left';
+             targetHandle = 't-right';
           }
-        }
-      } else {
-        // Hierarchical relationships defaults
-        edge.sourceHandle = 's-bottom';
-        edge.targetHandle = 't-top';
       }
+
       return {
           ...edge,
+          sourceHandle,
+          targetHandle,
           type: 'customEdge',
           data: {
               ...edge.data,
