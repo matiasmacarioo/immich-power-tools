@@ -12,6 +12,7 @@ const config = {
   prefix: "",
   theme: {
   	fontFamily: {
+  		sans: ['Outfit', ...fontFamily.sans],
   		mono: [ ...fontFamily.mono ]
   	},
   	container: {

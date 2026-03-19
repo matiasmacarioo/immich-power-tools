@@ -11,6 +11,20 @@ import { Button } from '../ui/button';
 import { Check } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
+const getEdgeColor = (type: string) => {
+  switch (type) {
+    case 'Spouse': return '#ec4899'; // pink-500
+    case 'Sibling': 
+    case 'Step-Sibling':
+    case 'Half-Sibling': return '#3b82f6'; // blue-500
+    case 'Parent':
+    case 'Step-Parent':
+    case 'Child': return '#22c55e'; // green-500
+    case 'Cousin': return '#f97316'; // orange-500
+    default: return '#8b5cf6'; // violet-500
+  }
+};
+
 interface RelationshipGraphProps {
   relationships: any[];
   people: IPerson[];
@@ -31,7 +45,7 @@ const PersonNode = ({ id, data }: any) => {
   };
 
   return (
-    <div className={`flex items-center gap-3 bg-card border p-2 pr-4 shadow-sm w-[220px] relative transition-all ${data.roundedClass || 'rounded-lg'}`}>
+    <div className={`flex items-center justify-center gap-3 bg-card border p-2 shadow-sm w-[220px] relative transition-all ${data.roundedClass || 'rounded-lg'}`}>
       {/* Target handles */}
       <Handle type="target" position={Position.Top} id="t-top" className="w-3 h-3 bg-transparent border-transparent" />
       <Handle type="target" position={Position.Bottom} id="t-bottom" className="w-3 h-3 bg-transparent border-transparent" />
@@ -49,15 +63,52 @@ const PersonNode = ({ id, data }: any) => {
       ) : (
         <div className="w-10 h-10 rounded-full bg-muted flex flex-shrink-0 items-center justify-center text-xs">?</div>
       )}
-      <div className="flex flex-col overflow-hidden">
-        <span className="font-semibold text-sm truncate">{data.label}</span>
+      <div className="flex flex-col overflow-hidden items-start">
+        <span className="font-semibold text-sm truncate max-w-[140px] text-left">{data.label}</span>
+        {data.hoverBadge && (
+           <span 
+             className="text-[10px] font-bold uppercase -mt-0.5 tracking-wide animate-in fade-in zoom-in duration-200" 
+             style={{ color: data.hoverColor }}
+           >
+             {data.hoverBadge}
+           </span>
+        )}
       </div>
     </div>
   );
 };
 
+const CustomEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, markerEnd, data }: any) => {
+  const [edgePath, labelX, labelY] = getSmoothStepPath({
+    sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, borderRadius: 16
+  });
+  
+  const isHovered = !!style?.stroke;
+
+  return (
+    <>
+      <BaseEdge id={id} path={edgePath} style={style} markerEnd={markerEnd} />
+      <EdgeLabelRenderer>
+        <div
+          style={{
+            position: 'absolute',
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+            pointerEvents: 'none',
+          }}
+          className={`flex items-center bg-background/90 backdrop-blur-md px-2 py-0.5 rounded-full border shadow-sm text-[10px] font-medium z-10 transition-opacity duration-200 ${['Sibling', 'Spouse', 'Step-Sibling', 'Half-Sibling', 'Cousin'].includes(data?.type) ? 'hidden' : ''} ${isHovered ? 'opacity-0' : 'opacity-100'}`}
+        >
+          <span className="text-muted-foreground">{data?.label}</span>
+        </div>
+      </EdgeLabelRenderer>
+    </>
+  );
+};
+
 const nodeTypes = {
   person: PersonNode,
+};
+const edgeTypes = {
+  customEdge: CustomEdge,
 };
 export default function RelationshipGraph({ relationships, people, onAddVisual }: RelationshipGraphProps) {
   const { theme } = useTheme();
@@ -425,7 +476,15 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
         edge.sourceHandle = 's-bottom';
         edge.targetHandle = 't-top';
       }
-      return edge;
+      return {
+          ...edge,
+          type: 'customEdge',
+          data: {
+              ...edge.data,
+              type: edge.label as string,
+              label: t(edge.label as string)
+          }
+      };
     });
 
     return { initialNodes: layoutedNodes, initialEdges: layoutedEdges, suggestions: suggestionsTemp };
@@ -559,12 +618,13 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
   const onNodeMouseEnter = useCallback((_: React.MouseEvent, node: Node) => {
     setEdges((eds) => eds.map((ed) => {
       const isConnected = ed.source === node.id || ed.target === node.id;
+      const edgeType = ed.data?.type || ed.label;
       return {
         ...ed,
         animated: isConnected,
         style: {
           strokeWidth: isConnected ? 3 : 1,
-          stroke: isConnected ? '#3b82f6' : undefined,
+          stroke: isConnected ? getEdgeColor(edgeType as string) : undefined,
           opacity: isConnected ? 1 : 0.2,
           transition: 'stroke-width 0.2s, stroke 0.2s, opacity 0.2s',
         },
@@ -572,12 +632,18 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
     }));
     
     setNodes((nds) => nds.map((n) => {
-      const isConnectedNode = n.id === node.id || initialEdges.some(e => 
+      const connectedEdge = initialEdges.find(e => 
         (e.source === node.id && e.target === n.id) || 
         (e.target === node.id && e.source === n.id)
       );
+      const isConnectedNode = n.id === node.id || connectedEdge;
       return {
         ...n,
+        data: {
+          ...n.data,
+          hoverBadge: connectedEdge ? (connectedEdge.data?.label || connectedEdge.label) : undefined,
+          hoverColor: connectedEdge ? getEdgeColor((connectedEdge.data?.type || connectedEdge.label) as string) : undefined,
+        },
         style: {
            ...n.style,
            opacity: isConnectedNode ? 1 : 0.4,
@@ -599,6 +665,11 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
     }));
     setNodes((nds) => nds.map((n) => ({
       ...n,
+      data: {
+         ...n.data,
+         hoverBadge: undefined,
+         hoverColor: undefined,
+      },
       style: {
          ...n.style,
          opacity: 1,
@@ -606,6 +677,11 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
       }
     })));
   }, [setEdges, setNodes]);
+
+  const onEdgeClick = useCallback((_: React.MouseEvent, edge: Edge) => {
+    // Optional: Add functionality for edge click, e.g., showing edge details
+    console.log('Edge clicked:', edge);
+  }, []);
 
   return (
     <div style={{ width: '100%', height: '100%' }}>
@@ -617,9 +693,11 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
         onNodeMouseEnter={onNodeMouseEnter}
         onNodeMouseLeave={onNodeMouseLeave}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         fitView
         onConnect={handleConnect}
         onEdgeContextMenu={handleEdgeContextMenu}
+        onEdgeClick={onEdgeClick}
         colorMode={theme === 'dark' ? 'dark' : 'light'}
       >
         <Controls />
