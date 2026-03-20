@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import PageLayout from '@/components/layouts/PageLayout';
-import Header from '@/components/shared/Header';
 import PeopleDropdown from '@/components/shared/PeopleDropdown';
 import { Button } from '@/components/ui/button';
 import { listPeople } from '@/handlers/api/people.handler';
@@ -13,10 +12,13 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 const RelationshipGraph = dynamic(() => import('@/components/shared/RelationshipGraph'), {
   ssr: false,
-  loading: () => <div className="h-full w-full flex items-center justify-center">Loading tree...</div>
+  loading: () => <div className="h-full w-full flex items-center justify-center">Loading tree...</div>,
 });
 
-const RELATIONSHIP_TYPES = ['Parent', 'Step-Parent', 'Child', 'Spouse', 'Ex-Spouse', 'Separated', 'Estranged', 'Sibling', 'Step-Sibling', 'Cousin', 'Godparent', 'Godchild', 'Friend', 'Other'];
+const RELATIONSHIP_TYPES = [
+  'Parent', 'Step-Parent', 'Child', 'Spouse', 'Ex-Spouse', 'Separated',
+  'Estranged', 'Sibling', 'Step-Sibling', 'Cousin', 'Godparent', 'Godchild', 'Friend', 'Other',
+];
 
 export default function RelationshipTree() {
   const { t } = useLanguage();
@@ -26,20 +28,20 @@ export default function RelationshipTree() {
   const [person2, setPerson2] = useState<string>('');
   const [relationType, setRelationType] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
 
   const fetchRelationships = async () => {
     try {
       const res = await fetch('/api/relationships');
       const data = await res.json();
       setRelationships(data);
-    } catch (e) {
+    } catch {
       toast.error('Failed to fetch relationships');
     }
   };
 
   const fetchAllPeople = async () => {
     try {
-      // Fetch people (using sensible max to get naming map)
       const res = await listPeople({ page: 1, perPage: 10000 });
       setPeople(res.people);
     } catch (e) {
@@ -61,24 +63,24 @@ export default function RelationshipTree() {
       toast.error('Cannot create relationship with themselves');
       return;
     }
-
     setIsLoading(true);
     try {
       const res = await fetch('/api/relationships', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ person1Id: person1, person2Id: person2, relationshipType: relationType })
+        body: JSON.stringify({ person1Id: person1, person2Id: person2, relationshipType: relationType }),
       });
       if (res.ok) {
         toast.success('Relationship added!');
         setPerson1('');
         setPerson2('');
         setRelationType('');
+        setPanelOpen(false);
         await fetchRelationships();
       } else {
         toast.error('Failed to add relationship');
       }
-    } catch (e) {
+    } catch {
       toast.error('Error adding relationship');
     } finally {
       setIsLoading(false);
@@ -107,55 +109,92 @@ export default function RelationshipTree() {
         } else {
           toast.error('Failed to import data');
         }
-      } catch (err) {
+      } catch {
         toast.error('Invalid JSON file');
       }
     };
     reader.readAsText(file);
-    e.target.value = ''; // Reset input
+    e.target.value = '';
   };
 
   return (
     <PageLayout className="!p-0 !mb-0 flex flex-col">
-      {/* Top Bar for Adding / Importing / Exporting */}
-      <div className="flex flex-col sm:flex-row items-center gap-2 p-4 border-b bg-background shadow-sm flex-wrap">
-        <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
-          <div className="w-full sm:w-48"><PeopleDropdown peopleIds={person1 ? [person1] : []} onChange={(ids) => setPerson1(ids[0] || '')} /></div>
-          <span className="text-sm font-medium hidden sm:inline-block">{t('is')}</span>
-          <div className="w-full sm:w-36">
-            <Select value={relationType} onValueChange={setRelationType}>
-              <SelectTrigger className="w-full"><SelectValue placeholder={t('Relation')} /></SelectTrigger>
-              <SelectContent>
-                {RELATIONSHIP_TYPES.map(type => <SelectItem key={type} value={type}>{t(type)}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <span className="text-sm font-medium hidden sm:inline-block">{t('to')}</span>
-          <div className="w-full sm:w-48"><PeopleDropdown peopleIds={person2 ? [person2] : []} onChange={(ids) => setPerson2(ids[0] || '')} /></div>
-
-          <Button onClick={handleAddRelation} disabled={isLoading} size="sm" className="w-full sm:w-auto sm:ml-2">
-            {t('Add Relation')}
-          </Button>
-        </div>
-
-        <div className="flex-1 hidden sm:block"></div>
-
-        <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-          <Button variant="outline" size="sm" onClick={handleExport} className="flex-1 sm:flex-none flex gap-2">
-            <Download size={16} /> {t('Export')}
-          </Button>
-
-          <label className="cursor-pointer flex-1 sm:flex-none">
-            <input type="file" accept=".json" className="hidden" onChange={handleImport} />
-            <Button variant="outline" size="sm" className="w-full flex gap-2" asChild>
-              <span><Upload size={16} /> {t('Import')}</span>
-            </Button>
-          </label>
-        </div>
-      </div>
-
-      <div className='flex-1 w-full relative min-h-[500px]'>
+      <div className="flex-1 w-full relative min-h-[500px]">
         <RelationshipGraph relationships={relationships} people={people} onAddVisual={fetchRelationships} />
+
+        {/* Floating panel anchor — sits top-left, above the ReactFlow controls */}
+        <div className="absolute top-4 left-4 z-50 flex flex-col gap-2 pointer-events-auto">
+          {/* Toggle button */}
+          <Button
+            id="add-relation-toggle"
+            size="sm"
+            variant={panelOpen ? 'default' : 'outline'}
+            className="shadow-md bg-background/90 backdrop-blur-sm border hover:bg-muted transition-all"
+            onClick={() => setPanelOpen((v) => !v)}
+          >
+            {panelOpen ? `✕ ${t('Close')}` : `＋ ${t('Add Relation')}`}
+          </Button>
+
+          {/* Slide-down card */}
+          {panelOpen && (
+            <div className="bg-card/95 backdrop-blur-sm border rounded-xl shadow-xl p-4 flex flex-col gap-3 w-72 animate-in fade-in slide-in-from-top-2 duration-200">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                {t('Add Relation')}
+              </p>
+
+              <div className="flex flex-col gap-2">
+                {/* Person 1 */}
+                <PeopleDropdown
+                  peopleIds={person1 ? [person1] : []}
+                  onChange={(ids) => setPerson1(ids[0] || '')}
+                />
+
+                {/* Relation type */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground shrink-0">{t('is')}</span>
+                  <Select value={relationType} onValueChange={setRelationType}>
+                    <SelectTrigger className="flex-1 h-8 text-sm">
+                      <SelectValue placeholder={t('Relation')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {RELATIONSHIP_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>{t(type)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Person 2 */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground shrink-0">{t('to')}</span>
+                  <div className="flex-1">
+                    <PeopleDropdown
+                      peopleIds={person2 ? [person2] : []}
+                      onChange={(ids) => setPerson2(ids[0] || '')}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Button id="submit-add-relation" onClick={handleAddRelation} disabled={isLoading} size="sm" className="w-full">
+                {isLoading ? '...' : t('Add Relation')}
+              </Button>
+
+              {/* Export / Import */}
+              <div className="flex gap-2 border-t pt-3">
+                <Button variant="outline" size="sm" onClick={handleExport} className="flex-1 flex gap-1.5">
+                  <Download size={13} /> {t('Export')}
+                </Button>
+                <label className="flex-1 cursor-pointer">
+                  <input type="file" accept=".json" className="hidden" onChange={handleImport} />
+                  <Button variant="outline" size="sm" className="w-full flex gap-1.5" asChild>
+                    <span><Upload size={13} /> {t('Import')}</span>
+                  </Button>
+                </label>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </PageLayout>
   );

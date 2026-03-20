@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback, useState, useEffect } from 'react';
-import { ReactFlow, Controls, Background, MiniMap, Node, Edge, Connection, useNodesState, useEdgesState } from '@xyflow/react';
+import { ReactFlow, Controls, Background, Node, Edge, Connection, useNodesState, useEdgesState } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { IPerson } from '@/types/person';
 import { useTheme } from 'next-themes';
@@ -402,7 +402,6 @@ export default function RelationshipGraph({ relationships, people, onAddVisual }
         colorMode={theme === 'dark' ? 'dark' : 'light'}
       >
         <Controls />
-        <MiniMap />
         <Background gap={12} size={1} />
       </ReactFlow>
 

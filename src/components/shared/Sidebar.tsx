@@ -18,7 +18,7 @@ const ThemeSwitcher = dynamic(() => import("@/components/shared/ThemeSwitcher"),
 export default function Sidebar() {
   const router = useRouter();
   const { pathname } = router;
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [changelogOpen, setChangelogOpen] = useState(false);
   const { lang, setLang } = useLanguage();
 

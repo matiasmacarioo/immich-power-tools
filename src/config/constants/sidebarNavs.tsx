@@ -7,6 +7,11 @@ export const sidebarNavs = [
   //   icon: <Rewind className="h-4 w-4" />,
   // },
   {
+    title: "Relationship Tree",
+    link: "/people/relationship-tree",
+    icon: <GalleryHorizontal className="h-4 w-4" />,
+  },
+  {
     title: "Find Assets",
     link: "/find",
     icon: <Search className="h-4 w-4" />,
@@ -15,11 +20,6 @@ export const sidebarNavs = [
     title: "Manage People",
     link: "/",
     icon: <User className="h-4 w-4" />,
-  },
-  {
-    title: "Relationship Tree",
-    link: "/people/relationship-tree",
-    icon: <GalleryHorizontal className="h-4 w-4" />,
   },
   {
     title: "Analytics",
