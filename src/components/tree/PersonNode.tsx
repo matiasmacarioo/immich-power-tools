@@ -89,7 +89,7 @@ const PersonNode = ({ id, data }: any) => {
         {isDeceased && (
           <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/60">{t('Deceased')}</span>
         )}
-        {!isDeceased && data.hoverBadge && (
+        {data.hoverBadge && (
           <span
             className="text-[10px] font-bold uppercase -mt-0.5 tracking-wide animate-in fade-in zoom-in duration-200"
             style={{ color: data.hoverColor }}
