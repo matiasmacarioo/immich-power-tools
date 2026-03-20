@@ -16,6 +16,7 @@ export default function ThemeSwitcher() {
       className={cn(
         "p-1 rounded-full transition-all duration-300 border border-primary text-primary",
       )}
+      aria-label="Toggle theme"
     >
       {theme === "light" ? <Moon size={10} /> : <Sun size={10} />}
     </button>

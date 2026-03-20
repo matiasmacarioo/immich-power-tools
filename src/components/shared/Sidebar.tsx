@@ -87,7 +87,11 @@ export default function Sidebar() {
           </div>
 
           <div className="flex items-center justify-center border-t pt-2">
-             <button onClick={() => setCollapsed(!collapsed)} className="p-1.5 hover:bg-muted text-muted-foreground rounded-md w-full flex justify-center">
+             <button
+               onClick={() => setCollapsed(!collapsed)}
+               className="p-1.5 hover:bg-muted text-muted-foreground rounded-md w-full flex justify-center"
+               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+             >
                 {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
              </button>
           </div>
