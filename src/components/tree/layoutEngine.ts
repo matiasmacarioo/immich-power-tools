@@ -16,6 +16,7 @@ interface LayoutOptions {
   getChildren: (id: string) => string[];
   getSpouses: (id: string) => string[];
   getSiblings: (id: string) => string[];
+  highlightedIds?: Set<string>;
 }
 
 export function buildLayoutedGraph(opts: LayoutOptions): {
@@ -23,7 +24,7 @@ export function buildLayoutedGraph(opts: LayoutOptions): {
   layoutedEdges: Edge[];
   suggestions: any[];
 } {
-  const { relationships, peopleMap, handleAddRelationClick, translateLabel, getParents, getChildren, getSpouses, getSiblings } = opts;
+  const { relationships, peopleMap, handleAddRelationClick, translateLabel, getParents, getChildren, getSpouses, getSiblings, highlightedIds } = opts;
 
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
@@ -166,17 +167,19 @@ export function buildLayoutedGraph(opts: LayoutOptions): {
 
   normalizedEdges.forEach((edge) => {
     if (edge.label === 'Parent' || edge.label === 'Step-Parent') {
-      dagreGraph.setEdge(edge.source, edge.target, { weight: 2 });
+      const isFamily = highlightedIds?.has(edge.source) && highlightedIds?.has(edge.target);
+      dagreGraph.setEdge(edge.source, edge.target, { weight: isFamily ? 20 : 2 });
     }
   });
 
   const proxyByParent = new Map<string, string>();
   normalizedEdges.forEach((edge) => {
     if (edge.label === 'Spouse') {
+      const isFamily = highlightedIds?.has(edge.source) && highlightedIds?.has(edge.target);
       const dummyId = `proxy_marriage_${edge.source}_${edge.target}`;
       dagreGraph.setNode(dummyId, { width: 1, height: 1 });
-      dagreGraph.setEdge(edge.source, dummyId, { weight: 100, minlen: 0 });
-      dagreGraph.setEdge(edge.target, dummyId, { weight: 100, minlen: 0 });
+      dagreGraph.setEdge(edge.source, dummyId, { weight: isFamily ? 1000 : 100, minlen: 0 });
+      dagreGraph.setEdge(edge.target, dummyId, { weight: isFamily ? 1000 : 100, minlen: 0 });
       proxyByParent.set(edge.source, dummyId);
       proxyByParent.set(edge.target, dummyId);
     }
@@ -185,8 +188,9 @@ export function buildLayoutedGraph(opts: LayoutOptions): {
   normalizedEdges.forEach((edge) => {
     if (edge.label === 'Parent' || edge.label === 'Step-Parent') {
       const proxyId = proxyByParent.get(edge.source);
-      if (proxyId) dagreGraph.setEdge(proxyId, edge.target, { weight: 2, minlen: 1 });
-      else dagreGraph.setEdge(edge.source, edge.target, { weight: 2, minlen: 1 });
+      const isFamily = highlightedIds?.has(edge.source) && highlightedIds?.has(edge.target);
+      if (proxyId) dagreGraph.setEdge(proxyId, edge.target, { weight: isFamily ? 20 : 2, minlen: 1 });
+      else dagreGraph.setEdge(edge.source, edge.target, { weight: isFamily ? 20 : 2, minlen: 1 });
     }
   });
 
