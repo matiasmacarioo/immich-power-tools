@@ -210,8 +210,40 @@ export function buildLayoutedGraph(opts: LayoutOptions): {
     if (e2 && ['Sibling', 'Step-Sibling', 'Half-Sibling'].includes(e2.label as string)) return true;
     const p1 = getParents(n1);
     const p2 = getParents(n2);
-    return p1.length > 0 && p1.some((p) => p2.includes(p));
+    return (p1.length > 0 && p1.some((p) => p2.includes(p)));
   };
+
+  // --- Force siblings and spouses to the same Y level ---
+  const siblingSpouseClusters: Set<string>[] = [];
+  const processedForCluster = new Set<string>();
+
+  nodesArr.forEach((node) => {
+    if (processedForCluster.has(node.id)) return;
+    const cluster = new Set<string>([node.id]);
+    const queue = [node.id];
+    processedForCluster.add(node.id);
+
+    while (queue.length > 0) {
+      const curr = queue.shift()!;
+      nodesArr.forEach((cand) => {
+        if (!processedForCluster.has(cand.id) && (isSibling(curr, cand.id) || isSpouse(curr, cand.id))) {
+          cluster.add(cand.id);
+          processedForCluster.add(cand.id);
+          queue.push(cand.id);
+        }
+      });
+    }
+    if (cluster.size > 1) siblingSpouseClusters.push(cluster);
+  });
+
+  siblingSpouseClusters.forEach((cluster) => {
+    const ys = Array.from(cluster).map(id => dagreGraph.node(id).y).sort((a,b) => a-b);
+    const medianY = ys[Math.floor(ys.length / 2)];
+    cluster.forEach(id => {
+      const node = dagreGraph.node(id);
+      node.y = medianY;
+    });
+  });
 
   // --- Pyramid layout per rank ---
   const layoutedNodes: Node[] = [];
