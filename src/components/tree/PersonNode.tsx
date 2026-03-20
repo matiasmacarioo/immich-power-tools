@@ -56,7 +56,7 @@ const PersonNode = ({ id, data }: any) => {
 
   return (
     <div
-      className={`flex items-center justify-center gap-3 bg-card border p-2 shadow-sm w-[220px] relative ${computedRounded} ${isDeceased ? 'bg-muted/70 border-dashed grayscale-[0.1]' : ''}`}
+      className={`flex items-center justify-center gap-3 bg-card border p-2 shadow-sm w-[220px] relative ${computedRounded} ${isDeceased ? 'border-dashed grayscale-[0.1]' : ''}`}
       style={mainStyle}
     >
       <div className="absolute top-[-1px] bottom-[-1px] bg-card -z-10" style={bridgeStyle} />
@@ -73,7 +73,7 @@ const PersonNode = ({ id, data }: any) => {
 
       <div className="relative shrink-0">
         {data.imageUrl ? (
-          <img src={data.imageUrl} alt={data.label} className={`w-10 h-10 rounded-full object-cover bg-muted border ${isDeceased ? 'grayscale blur-[0.5px]' : ''}`} />
+          <img src={data.imageUrl} alt={data.label} className={`w-10 h-10 rounded-full object-cover bg-muted border ${isDeceased ? '' : ''}`} />
         ) : (
           <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-xs border">?</div>
         )}
