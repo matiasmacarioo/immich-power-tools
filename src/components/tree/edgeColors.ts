@@ -30,7 +30,11 @@ export const getEdgeColor = (type: string): string => {
     case 'Godchild': return '#0ea5e9';
     case 'Sibling-in-law':
     case 'Parent-in-law':
-    case 'Child-in-law': return '#eab308';
+    case 'Child-in-law':
+    case 'Grandparent-in-law':
+    case 'Grandchild-in-law':
+    case 'Great-grandparent-in-law':
+    case 'Great-grandchild-in-law': return '#eab308';
     default: return '#64748b';
   }
 };

@@ -9,6 +9,7 @@ export interface IPerson {
   deathDate:    Date | string | null;
   updatedAt:     Date;
   assetCount:   number;
+  isHidden:      boolean;
   similarity?:   number;
 }
 

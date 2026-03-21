@@ -166,9 +166,21 @@ export function buildRelationshipHelpers(relationships: RelRecord[]) {
       for (const sp of tSpouses) {
         if (getSiblings(sp).includes(nodeId)) return { type: 'Sibling-in-law', path: [targetId, sp, nodeId] };
         if (getParents(sp).includes(nodeId)) return { type: 'Parent-in-law', path: [targetId, sp, nodeId] };
+        // Grandparent-in-law & Great-grandparent-in-law
+        const ancestorPath = findPath(sp, nodeId, 'up', 3);
+        if (ancestorPath) {
+          if (ancestorPath.depth === 2) return { type: 'Grandparent-in-law', path: [targetId, sp, ...ancestorPath.path.slice(1)] };
+          if (ancestorPath.depth === 3) return { type: 'Great-grandparent-in-law', path: [targetId, sp, ...ancestorPath.path.slice(1)] };
+        }
       }
       for (const c of tChildren) {
         if (getSpouses(c).includes(nodeId)) return { type: 'Child-in-law', path: [targetId, c, nodeId] };
+        for (const gcId of getChildren(c)) {
+          if (getSpouses(gcId).includes(nodeId)) return { type: 'Grandchild-in-law', path: [targetId, c, gcId, nodeId] };
+          for (const ggcId of getChildren(gcId)) {
+            if (getSpouses(ggcId).includes(nodeId)) return { type: 'Great-grandchild-in-law', path: [targetId, c, gcId, ggcId, nodeId] };
+          }
+        }
       }
 
       // Cousins

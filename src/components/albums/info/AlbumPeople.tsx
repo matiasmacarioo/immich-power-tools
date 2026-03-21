@@ -224,6 +224,9 @@ const AlbumPeople = React.forwardRef<IAlbumPeopleRef, AlbumPeopleProps>(({ album
                   birthDate: null,
                   alias: null,
                   thumbnailPath: PERSON_THUBNAIL_PATH(selectedPerson.id),
+                  isDeceased: false,
+                  deathDate: null,
+                  gender: null,
                   isHidden: false,
                   updatedAt: new Date()
                 }}

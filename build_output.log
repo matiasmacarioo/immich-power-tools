@@ -1,0 +1,20 @@
+
+> immich-power-tools@0.21.0 build
+> next build
+
+  Ôû▓ Next.js 14.2.5
+  - Environments: .env
+
+   Linting and checking validity of types ...
+Failed to compile.
+
+./src/components/albums/info/AlbumPeople.tsx:227:19
+Type error: Object literal may only specify known properties, and 'isHidden' does not exist in type 'IPerson'.
+
+  225 |                   alias: null,
+  226 |                   thumbnailPath: PERSON_THUBNAIL_PATH(selectedPerson.id),
+> 227 |                   isHidden: false,
+      |                   ^
+  228 |                   updatedAt: new Date()
+  229 |                 }}
+  230 |                 triggerClassName='w-full flex-1'
