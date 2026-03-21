@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { format as dateFnsFormat } from 'date-fns';
+import { es, enUS } from 'date-fns/locale';
 
 type Language = 'en' | 'es';
 
@@ -6,6 +8,7 @@ interface LanguageContextType {
   lang: Language;
   setLang: (lang: Language) => void;
   t: (key: string) => string;
+  formatDate: (date: Date | number, formatStr: string) => string;
 }
 
 const translations: Record<string, Record<Language, string>> = {
@@ -63,6 +66,7 @@ const translations: Record<string, Record<Language, string>> = {
   'Mark as Deceased': { en: 'Mark as Deceased', es: 'Marcar como fallecido' },
   'Mark as Living': { en: 'Mark as Living', es: 'Marcar como vivo' },
   'View Photos': { en: 'View Photos', es: 'Ver fotos' },
+  'Edit Birthday': { en: 'Edit Data', es: 'Editar datos' },
   'Relationship successfully purged!': { en: 'Relationship successfully purged!', es: '¡Relación eliminada exitosamente!' },
   'Failed to delete relationship.': { en: 'Failed to delete relationship.', es: 'Error al eliminar relación.' },
   'Error contacting server.': { en: 'Error contacting server.', es: 'Error al contactar el servidor.' },
@@ -72,6 +76,7 @@ const LanguageContext = createContext<LanguageContextType>({
   lang: 'es',
   setLang: () => {},
   t: (key) => key,
+  formatDate: (date, formatStr) => dateFnsFormat(date, formatStr, { locale: es }),
 });
 
 export const LanguageProvider = ({ children }: { children: ReactNode }) => {
@@ -91,8 +96,12 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
     return translations[key]?.[lang] || key;
   };
 
+  const formatDate = (date: Date | number, formatStr: string) => {
+    return dateFnsFormat(date, formatStr, { locale: lang === 'es' ? es : enUS });
+  };
+
   return (
-    <LanguageContext.Provider value={{ lang, setLang: handleSetLang, t }}>
+    <LanguageContext.Provider value={{ lang, setLang: handleSetLang, t, formatDate }}>
       {children}
     </LanguageContext.Provider>
   );

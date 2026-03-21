@@ -1,5 +1,6 @@
 import { useRouter } from "next/router";
 import { useMemo } from "react";
+import { ImportExportDropdown } from "./ImportExportDropdown";
 import { Button } from "../ui/button";
 import { ArrowLeft, ArrowRight, SortAsc, SortDesc } from "lucide-react";
 import { usePeopleFilterContext } from "@/contexts/PeopleFilterContext";
@@ -155,6 +156,8 @@ export function PeopleFilters() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      
+      <ImportExportDropdown />
     </div>
   );
 }

@@ -55,8 +55,10 @@ const Autocomplete = React.forwardRef<HTMLInputElement, AutocompleteProps>(
     }, [value, options])
 
     React.useEffect(() => {
-      setInputValue(initialValue || currentLabel)
-    }, [initialValue, currentLabel])
+      if (!open) {
+        setInputValue(initialValue || currentLabel)
+      }
+    }, [initialValue, currentLabel, open])
 
     // Close dropdown when clicking outside
     React.useEffect(() => {

@@ -20,7 +20,8 @@ import { getPersonAssets } from '@/handlers/api/person.handler';
 import { updatePerson } from '@/handlers/api/people.handler';
 import AssetGrid from './AssetGrid';
 import { IAsset } from '@/types/asset';
-import { Skull, Heart, Image as ImageIcon } from 'lucide-react';
+import { Skull, Heart, Image as ImageIcon, Calendar } from 'lucide-react';
+import PersonBirthdayCell from '../people/PersonBirthdayCell';
 
 interface RelationshipGraphProps {
   relationships: any[];
@@ -32,14 +33,19 @@ interface RelationshipGraphProps {
 const nodeTypes = { person: PersonNode };
 const edgeTypes = { customEdge: CustomEdge };
 
-/** Refit view whenever the initial nodes/edges layout changes */
-function GraphAutoFitter({ trigger }: { trigger: any }) {
+/** Refit view only on the first load of the graph */
+function GraphAutoFitter() {
   const { fitView } = useReactFlow();
+  const [hasFitted, setHasFitted] = useState(false);
+  
   useEffect(() => {
-    setTimeout(() => {
-      fitView({ duration: 400, padding: 0.2 });
-    }, 50);
-  }, [trigger, fitView]);
+    if (!hasFitted) {
+      setTimeout(() => {
+        fitView({ duration: 400, padding: 0.2 });
+        setHasFitted(true);
+      }, 50);
+    }
+  }, [fitView, hasFitted]);
   return null;
 }
 
@@ -62,6 +68,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; personId: string; personName: string } | null>(null);
 
   const [renamingPerson, setRenamingPerson] = useState<{ id: string; name: string } | null>(null);
+  const [editingBirthdayFor, setEditingBirthdayFor] = useState<{ id: string; name: string } | null>(null);
   const [newName, setNewName] = useState('');
   const [isRenaming, setIsRenaming] = useState(false);
 
@@ -374,11 +381,19 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
     }));
   }, [setEdges, setNodes, highlightedIds]);
 
-  const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
-    setSelectedPersonPhotos({ id: node.id, name: node.data.label as string });
+  const handleShowPhotos = (personId: string, name: string) => {
+    setSelectedPersonPhotos({ id: personId, name });
     setPhotosPage(1);
     setPersonPhotos([]);
     setHasMorePhotos(true);
+  };
+
+  const onNodeClick = useCallback((e: React.MouseEvent, node: Node) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation(); // Prevent bubbling to window which would hide it immediately
+    }
+    setContextMenu({ x: (e as any)?.clientX || 0, y: (e as any)?.clientY || 0, personId: node.id, personName: node.data.label as string });
   }, []);
 
   useEffect(() => {
@@ -462,7 +477,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
         colorMode={theme === 'dark' ? 'dark' : 'light'}
         fitView
       >
-        <GraphAutoFitter trigger={initialNodes} />
+        <GraphAutoFitter />
         <Controls />
         <Background gap={12} size={1} />
       </ReactFlow>
@@ -557,12 +572,42 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
         </DialogContent>
       </Dialog>
 
+      {/* Edit Birthday dialog */}
+      <Dialog open={!!editingBirthdayFor} onOpenChange={(open) => !open && setEditingBirthdayFor(null)}>
+        <DialogContent className="max-w-sm !p-6">
+          <DialogHeader><DialogTitle>{t('Edit Birthday')}</DialogTitle></DialogHeader>
+          <div className="py-2 flex flex-col items-center">
+            {(() => {
+              const personToEdit = editingBirthdayFor ? peopleMap[editingBirthdayFor.id] : null;
+              if (personToEdit) {
+                return (
+                  <div className="w-full">
+                    <PersonBirthdayCell 
+                      person={personToEdit} 
+                      initialEditing={true}
+                      onSaved={() => {
+                        setEditingBirthdayFor(null);
+                        if (onAddVisual) onAddVisual();
+                      }}
+                    />
+                  </div>
+                );
+              }
+              return <span className="text-muted-foreground text-sm">Loading...</span>;
+            })()}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingBirthdayFor(null)}>{t('Close')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Node Context Menu */}
       {contextMenu && (
         <div className="fixed z-[100] bg-card border rounded-lg shadow-xl py-1 min-w-[160px]" style={{ top: contextMenu.y, left: contextMenu.x }} onClick={(e) => e.stopPropagation()}>
           <div className="px-3 py-2 border-b mb-1 uppercase tracking-wider text-[10px] font-bold text-muted-foreground">{contextMenu.personName}</div>
-          <button onClick={() => selectedPersonPhotos ? null : onNodeClick(null as any, { id: contextMenu?.personId, data: { label: contextMenu?.personName } } as any)} className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted text-left"><ImageIcon size={14} className="text-blue-500" />{t('View Photos')}</button>
-          <button onClick={() => { setRenamingPerson({ id: contextMenu.personId, name: contextMenu.personName }); setNewName(contextMenu.personName); setContextMenu(null); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted text-left"><Edit2 size={14} className="text-orange-500" />{t('Rename')}</button>
+          <button onClick={() => { handleShowPhotos(contextMenu.personId, contextMenu.personName); setContextMenu(null); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted text-left"><ImageIcon size={14} className="text-blue-500" />{t('View Photos')}</button>
+          <button onClick={() => { setEditingBirthdayFor({ id: contextMenu.personId, name: contextMenu.personName }); setContextMenu(null); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted text-left"><Edit2 size={14} className="text-purple-500" />{t('Edit Birthday')}</button>
           <button onClick={() => toggleDeceased(contextMenu.personId, personStates[contextMenu.personId]?.isDeceased ?? false)} className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted text-left">
             {personStates[contextMenu.personId]?.isDeceased ? <><Heart size={14} className="text-rose-500 fill-rose-500/20" />{t('Mark as Living')}</> : <><Skull size={14} className="text-muted-foreground" />{t('Mark as Deceased')}</>}
           </button>

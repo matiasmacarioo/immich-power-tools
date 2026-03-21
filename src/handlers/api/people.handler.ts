@@ -25,16 +25,51 @@ export const listPeople = (filters: IPersonListFilters): Promise<IPeopleListResp
   });
 }
 
+let cachedPeopleForSearch: IPerson[] | null = null;
+export const invalidatePeopleCache = () => {
+  cachedPeopleForSearch = null;
+};
+
 export const updatePerson = (id: string, data: Partial<{
   name: string;
   birthDate: string | null;
   isHidden: boolean;
+  alias: string | null;
 }>) => {
-  return API.put(UPDATE_PERSON_PATH(id), data)
+  return API.put(UPDATE_PERSON_PATH(id), data).then((res) => {
+    invalidatePeopleCache();
+    return res;
+  });
 }
 
-export const searchPeople = (name: string) => {
-  return API.get(SEARCH_PEOPLE_PATH, { name }).then((response) => response.map(cleanUpPerson));
+let fetchPromise: Promise<any> | null = null;
+
+export const searchPeople = async (name: string) => {
+  if (!cachedPeopleForSearch) {
+    if (!fetchPromise) {
+       console.log("[searchPeople] Fetching cache from backend...");
+       fetchPromise = listPeople({ page: 1, perPage: 10000, type: 'named' }).catch(err => {
+         console.error("[searchPeople] Cache fetch failed:", err);
+         fetchPromise = null;
+         throw err;
+       });
+    }
+    const response = await fetchPromise;
+    cachedPeopleForSearch = response.people;
+    console.log("[searchPeople] Cache primed with length:", cachedPeopleForSearch?.length);
+  }
+  
+  const peopleList = cachedPeopleForSearch!;
+  const normalizedQuery = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  if (!normalizedQuery) return peopleList.slice(0, 50);
+
+  const results = peopleList.filter((p) => {
+    if (!p.name) return false;
+    const normalizedName = p.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    return normalizedName.includes(normalizedQuery);
+  });
+  console.log(`[searchPeople] Query: "${name}" -> Normalized: "${normalizedQuery}", Found: ${results.length}`);
+  return results.slice(0, 50);
 }
 
 export const mergePerson = (id: string, targetIds: string[]) => {

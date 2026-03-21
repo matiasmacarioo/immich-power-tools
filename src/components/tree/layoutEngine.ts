@@ -1,8 +1,8 @@
 import dagre from 'dagre';
 import { Node, Edge, MarkerType } from '@xyflow/react';
 
-export const NODE_WIDTH = 220;
-export const NODE_HEIGHT = 60;
+export const NODE_WIDTH = 260;
+export const NODE_HEIGHT = 70;
 
 const CORE_RENDER_RELS = ['Parent', 'Step-Parent', 'Child', 'Step-Child', 'Spouse', 'Ex-Spouse', 'Separated', 'Estranged', 'Sibling', 'Step-Sibling', 'Half-Sibling'];
 const HORIZONTAL_RELS = ['Sibling', 'Spouse', 'Ex-Spouse', 'Separated', 'Estranged', 'Friend', 'Cousin', 'Step-Sibling', 'Half-Sibling', 'Sibling-in-law'];
@@ -91,6 +91,8 @@ export function buildLayoutedGraph(opts: LayoutOptions): {
           data: {
             label: peopleMap[id]?.name || 'Unknown',
             imageUrl: peopleMap[id]?.thumbnailPath || '',
+            birthDate: (peopleMap[id] as any)?.birthDate || null,
+            alias: (peopleMap[id] as any)?.alias || null,
             onAddRelationClick: handleAddRelationClick,
           },
         };

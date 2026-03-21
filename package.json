@@ -83,6 +83,7 @@
     "sass": "^1.77.8",
     "tailwind-merge": "^2.5.2",
     "tailwindcss-animate": "^1.0.7",
+    "vcf": "^2.1.2",
     "yet-another-react-lightbox": "^3.21.4",
     "zod": "^4.3.6"
   },

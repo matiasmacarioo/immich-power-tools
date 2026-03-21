@@ -2,6 +2,7 @@
 import { db } from "@/config/db";
 import { getCurrentUser } from "@/handlers/serverUtils/user.utils";
 import { assetFaces, assets, exif, person } from "@/schema";
+import { localDb } from "@/config/localDb";
 import {
   and,
   asc,
@@ -89,7 +90,21 @@ export default async function handler(
         sortOrder === "asc" ? asc(person.updatedAt) : desc(person.updatedAt)
       );
     }
-    const people = await dbQuery.limit(perPage).offset((page - 1) * perPage);
+    const numPage = Number(page) || 1;
+    const numPerPage = Number(perPage) || 60;
+    const people = await dbQuery.limit(numPerPage).offset((numPage - 1) * numPerPage);
+
+    // Enrich with local aliases
+    const personIds = people.map(p => p.id);
+    if (personIds.length > 0) {
+      const placeholders = personIds.map(() => '?').join(',');
+      const localStates = localDb.prepare(`SELECT personId, alias FROM person_states WHERE personId IN (${placeholders})`).all(...personIds) as any[];
+      const aliasMap = new Map(localStates.map(s => [s.personId, s.alias]));
+      
+      people.forEach((p: any) => {
+        p.alias = aliasMap.get(p.id) || null;
+      });
+    }
 
     return res.status(200).json({
       people,

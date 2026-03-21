@@ -24,11 +24,22 @@ localDb.exec(`
   )
 `);
 
-// Person states table (deceased, etc.)
+// Person states table (deceased, alias, etc.)
 localDb.exec(`
   CREATE TABLE IF NOT EXISTS person_states (
     personId TEXT PRIMARY KEY,
     isDeceased INTEGER NOT NULL DEFAULT 0,
+    alias TEXT,
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+try { localDb.exec(`ALTER TABLE person_states ADD COLUMN alias TEXT`); } catch(e) {}
+
+// vCard UIDs table for syncing
+localDb.exec(`
+  CREATE TABLE IF NOT EXISTS vcard_uids (
+    personId TEXT PRIMARY KEY,
+    uid TEXT NOT NULL,
     updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
