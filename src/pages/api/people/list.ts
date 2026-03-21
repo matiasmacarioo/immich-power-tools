@@ -94,15 +94,18 @@ export default async function handler(
     const numPerPage = Number(perPage) || 60;
     const people = await dbQuery.limit(numPerPage).offset((numPage - 1) * numPerPage);
 
-    // Enrich with local aliases
+    // Enrich with local aliases and states
     const personIds = people.map(p => p.id);
     if (personIds.length > 0) {
       const placeholders = personIds.map(() => '?').join(',');
-      const localStates = localDb.prepare(`SELECT personId, alias FROM person_states WHERE personId IN (${placeholders})`).all(...personIds) as any[];
-      const aliasMap = new Map(localStates.map(s => [s.personId, s.alias]));
+      const localStates = localDb.prepare(`SELECT personId, alias, isDeceased, deathDate FROM person_states WHERE personId IN (${placeholders})`).all(...personIds) as any[];
+      const stateMap = new Map(localStates.map(s => [s.personId, s]));
       
       people.forEach((p: any) => {
-        p.alias = aliasMap.get(p.id) || null;
+        const state = stateMap.get(p.id);
+        p.alias = state?.alias || null;
+        p.isDeceased = state?.isDeceased === 1;
+        p.deathDate = state?.deathDate || null;
       });
     }
 

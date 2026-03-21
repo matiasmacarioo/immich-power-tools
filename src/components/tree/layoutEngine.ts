@@ -58,7 +58,7 @@ export function buildLayoutedGraph(opts: LayoutOptions): {
     }
   };
 
-  const addCleanEdge = (source: string, target: string, type: string, realId: string | null = null) => {
+  const addCleanEdge = (source: string, target: string, type: string, realId: string | null = null, marriageDate: string | null = null) => {
     let finalSource = source;
     let finalTarget = target;
     let finalLabel = type;
@@ -72,13 +72,13 @@ export function buildLayoutedGraph(opts: LayoutOptions): {
     if (!normalizedEdges.has(key)) {
       normalizedEdges.set(key, {
         id: key, source: finalSource, target: finalTarget, label: finalLabel,
-        data: { realId, sourceId: finalSource, targetId: finalTarget, label: finalLabel },
+        data: { realId, sourceId: finalSource, targetId: finalTarget, label: finalLabel, marriageDate },
         type: 'smoothstep',
         markerEnd: { type: MarkerType.ArrowClosed, width: 15, height: 15 },
       });
     } else {
       const existing = normalizedEdges.get(key)!;
-      existing.data = { ...existing.data, realId };
+      existing.data = { ...(existing.data || {}), realId, marriageDate: marriageDate || existing.data?.marriageDate };
     }
   };
 
@@ -92,13 +92,14 @@ export function buildLayoutedGraph(opts: LayoutOptions): {
             label: peopleMap[id]?.name || 'Unknown',
             imageUrl: peopleMap[id]?.thumbnailPath || '',
             birthDate: (peopleMap[id] as any)?.birthDate || null,
+            deathDate: (peopleMap[id] as any)?.deathDate || null,
             alias: (peopleMap[id] as any)?.alias || null,
             onAddRelationClick: handleAddRelationClick,
           },
         };
       }
     });
-    addCleanEdge(rel.person1Id, rel.person2Id, rel.relationshipType, rel.id);
+    addCleanEdge(rel.person1Id, rel.person2Id, rel.relationshipType, rel.id, rel.marriageDate);
   });
 
   // Tag each node with whether they have children
@@ -380,7 +381,7 @@ export function buildLayoutedGraph(opts: LayoutOptions): {
         sourceHandle,
         targetHandle,
         type: 'customEdge',
-        data: { ...edge.data, type: edge.label as string, label: translateLabel(edge.label as string) },
+        data: { ...(edge.data || {}), type: edge.label as string, label: translateLabel(edge.label as string), marriageDate: edge.data?.marriageDate },
       };
     });
 

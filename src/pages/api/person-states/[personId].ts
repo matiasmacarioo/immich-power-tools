@@ -6,8 +6,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'GET') {
     try {
-      const row = localDb.prepare('SELECT personId, isDeceased, alias FROM person_states WHERE personId = ?').get(personId) as any;
-      return res.status(200).json(row ? { ...row, isDeceased: !!row.isDeceased } : { personId, isDeceased: false, alias: null });
+      const row = localDb.prepare('SELECT personId, isDeceased, alias, deathDate FROM person_states WHERE personId = ?').get(personId) as any;
+      return res.status(200).json(row ? { ...row, isDeceased: !!row.isDeceased } : { personId, isDeceased: false, alias: null, deathDate: null });
     } catch (e: any) {
       return res.status(500).json({ error: e.message });
     }
@@ -15,22 +15,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'POST') {
     try {
-      const { isDeceased, alias } = req.body as { isDeceased?: boolean, alias?: string | null };
+      const { isDeceased, alias, deathDate } = req.body as { isDeceased?: boolean, alias?: string | null, deathDate?: string | null };
       
       // Get current values if not provided
-      const current = localDb.prepare('SELECT isDeceased, alias FROM person_states WHERE personId = ?').get(personId) as any;
+      const current = localDb.prepare('SELECT isDeceased, alias, deathDate FROM person_states WHERE personId = ?').get(personId) as any;
       const finalDeceased = isDeceased !== undefined ? (isDeceased ? 1 : 0) : (current?.isDeceased ?? 0);
       const finalAlias = alias !== undefined ? alias : (current?.alias ?? null);
+      const finalDeathDate = deathDate !== undefined ? deathDate : (current?.deathDate ?? null);
 
       localDb.prepare(`
-        INSERT INTO person_states (personId, isDeceased, alias)
-        VALUES (?, ?, ?)
+        INSERT INTO person_states (personId, isDeceased, alias, deathDate)
+        VALUES (?, ?, ?, ?)
         ON CONFLICT(personId) DO UPDATE SET 
           isDeceased = excluded.isDeceased, 
           alias = excluded.alias,
+          deathDate = excluded.deathDate,
           updatedAt = CURRENT_TIMESTAMP
-      `).run(personId, finalDeceased, finalAlias);
-      return res.status(200).json({ personId, isDeceased: !!finalDeceased, alias: finalAlias });
+      `).run(personId, finalDeceased, finalAlias, finalDeathDate);
+      return res.status(200).json({ personId, isDeceased: !!finalDeceased, alias: finalAlias, deathDate: finalDeathDate });
     } catch (e: any) {
       return res.status(500).json({ error: e.message });
     }

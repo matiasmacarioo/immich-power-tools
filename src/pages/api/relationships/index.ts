@@ -13,14 +13,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   } else if (req.method === 'POST') {
     try {
-      const { person1Id, person2Id, relationshipType } = req.body;
+      const { person1Id, person2Id, relationshipType, marriageDate } = req.body;
       if (!person1Id || !person2Id || !relationshipType) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
       const id = crypto.randomUUID();
-      const stmt = localDb.prepare('INSERT INTO relationships (id, person1Id, person2Id, relationshipType) VALUES (?, ?, ?, ?)');
-      stmt.run(id, person1Id, person2Id, relationshipType);
-      return res.status(201).json({ id, person1Id, person2Id, relationshipType });
+      const stmt = localDb.prepare('INSERT INTO relationships (id, person1Id, person2Id, relationshipType, marriageDate) VALUES (?, ?, ?, ?, ?)');
+      stmt.run(id, person1Id, person2Id, relationshipType, marriageDate || null);
+      return res.status(201).json({ id, person1Id, person2Id, relationshipType, marriageDate });
     } catch (e: any) {
       return res.status(500).json({ error: e.message });
     }

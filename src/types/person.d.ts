@@ -4,7 +4,8 @@ export interface IPerson {
   birthDate:     Date | null;
   alias:         string | null;
   thumbnailPath: string;
-  isHidden:      boolean;
+  isDeceased:   boolean;
+  deathDate:    Date | string | null;
   updatedAt:     Date;
   assetCount:   number;
   similarity?:   number;

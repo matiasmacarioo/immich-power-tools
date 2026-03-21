@@ -70,6 +70,9 @@ const translations: Record<string, Record<Language, string>> = {
   'Relationship successfully purged!': { en: 'Relationship successfully purged!', es: '¡Relación eliminada exitosamente!' },
   'Failed to delete relationship.': { en: 'Failed to delete relationship.', es: 'Error al eliminar relación.' },
   'Error contacting server.': { en: 'Error contacting server.', es: 'Error al contactar el servidor.' },
+  'Death Date': { en: 'Death Date', es: 'Fecha de fallecimiento' },
+  'Marriage Date': { en: 'Marriage Date', es: 'Fecha de casamiento' },
+  'Is Deceased': { en: 'Is Deceased', es: '¿Fallecido/a?' },
 };
 
 const LanguageContext = createContext<LanguageContextType>({

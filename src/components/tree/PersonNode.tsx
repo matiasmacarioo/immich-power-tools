@@ -32,7 +32,7 @@ const formatDateText = (dateStr: string | Date | null, formatDate: (d: Date, f: 
   return formatDate(date, 'PPP');
 }
 
-const calculateAge = (dateStr: string | Date | null): number | null => {
+const calculateAge = (dateStr: string | Date | null, deathDateStr?: string | Date | null): number | null => {
   if (!dateStr) return null;
   let birthDate: Date;
   if (dateStr instanceof Date) {
@@ -49,10 +49,24 @@ const calculateAge = (dateStr: string | Date | null): number | null => {
 
   if (Number.isNaN(birthDate.getTime()) || birthDate.getFullYear() === 1604) return null;
   
-  const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const m = today.getMonth() - birthDate.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+  let endDate = new Date();
+  if (deathDateStr) {
+    if (deathDateStr instanceof Date) {
+      endDate = deathDateStr;
+    } else {
+      const dateOnlyMatch = String(deathDateStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (dateOnlyMatch) {
+        const [, year, month, day] = dateOnlyMatch;
+        endDate = new Date(Number(year), Number(month) - 1, Number(day));
+      } else {
+        endDate = new Date(deathDateStr);
+      }
+    }
+  }
+
+  let age = endDate.getFullYear() - birthDate.getFullYear();
+  const m = endDate.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && endDate.getDate() < birthDate.getDate())) {
     age--;
   }
   return age;
@@ -110,7 +124,7 @@ const PersonNode = ({ id, data }: any) => {
     transition: `width 250ms ease, opacity 250ms ease, ${colorTrans}`,
   };
 
-  const age = calculateAge(data.birthDate);
+  const age = calculateAge(data.birthDate, data.deathDate);
 
   return (
     <div
@@ -162,7 +176,7 @@ const PersonNode = ({ id, data }: any) => {
         <div className={`overflow-hidden transition-all duration-300 ease-in-out flex flex-col items-start ${isDeceased || data.hoverBadge ? 'max-h-8 opacity-100' : 'max-h-0 opacity-0'}`}>
           {isDeceased && (
             <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/60 leading-none">
-              <TypewriterText text={t('Deceased')} />
+              <TypewriterText text={data.deathDate ? `${t('Deceased')} (${formatDateText(data.deathDate, formatDate, lang)})` : t('Deceased')} />
             </span>
           )}
           {data.hoverBadge && (

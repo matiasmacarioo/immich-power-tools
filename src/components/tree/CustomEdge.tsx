@@ -2,6 +2,7 @@ import React from 'react';
 import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath } from '@xyflow/react';
 import { getEdgeColor, isDashedEdge } from './edgeColors';
 import { TypewriterText } from '../shared/TypewriterText';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const CustomEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, markerEnd, data }: any) => {
   const [edgePath, labelX, labelY] = getSmoothStepPath({
@@ -20,6 +21,17 @@ const CustomEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, ta
     transition: 'stroke 200ms ease, stroke-width 200ms ease',
   };
 
+  const { formatDate, lang } = useLanguage();
+  const marriageDateStr = data?.marriageDate;
+  let formattedMarriageDate = '';
+  if (marriageDateStr) {
+    const match = String(marriageDateStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      const d = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+      formattedMarriageDate = formatDate(d, 'PP');
+    }
+  }
+
   return (
     <>
       <BaseEdge id={id} path={edgePath} style={edgeStyle} markerEnd={markerEnd} />
@@ -30,9 +42,14 @@ const CustomEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, ta
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             pointerEvents: 'none',
           }}
-          className={`flex items-center bg-background/90 backdrop-blur-md px-2 py-0.5 rounded-full border shadow-sm text-[10px] font-medium z-10 transition-opacity duration-200 ${['Sibling', 'Spouse', 'Step-Sibling', 'Half-Sibling', 'Cousin'].includes(data?.type) ? 'hidden' : ''} ${isHovered ? 'opacity-0' : 'opacity-100'}`}
+          className={`flex flex-col items-center bg-background/90 backdrop-blur-md px-2 py-0.5 rounded-xl border shadow-sm text-[9px] font-medium z-10 transition-opacity duration-200 ${['Sibling', 'Step-Sibling', 'Half-Sibling', 'Cousin'].includes(data?.type) && !marriageDateStr ? 'hidden' : ''} ${isHovered ? 'shadow-lg border-primary/50' : 'opacity-100'}`}
         >
           <span className="text-muted-foreground"><TypewriterText text={data?.label} /></span>
+          {marriageDateStr && (
+            <span className="text-[8px] opacity-70 border-t mt-0.5 pt-0.5">
+              <TypewriterText text={formattedMarriageDate} />
+            </span>
+          )}
         </div>
       </EdgeLabelRenderer>
     </>

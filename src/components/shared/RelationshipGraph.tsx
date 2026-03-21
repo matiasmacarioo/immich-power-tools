@@ -51,7 +51,7 @@ function GraphAutoFitter() {
 
 function GraphInner({ relationships, people, highlightedIds, onAddVisual }: RelationshipGraphProps) {
   const { theme } = useTheme();
-  const { t } = useLanguage();
+  const { t, lang, formatDate } = useLanguage();
 
   const [addingRelation, setAddingRelation] = useState<{ personId: string; relType: string; category: string; personName: string } | null>(null);
   const [edgeToDelete, setEdgeToDelete] = useState<Edge | null>(null);
@@ -64,7 +64,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
   const [photosPage, setPhotosPage] = useState(1);
   const [hasMorePhotos, setHasMorePhotos] = useState(true);
 
-  const [personStates, setPersonStates] = useState<Record<string, { isDeceased: boolean }>>({});
+  const [personStates, setPersonStates] = useState<Record<string, { isDeceased: boolean; deathDate?: string | null }>>({});
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; personId: string; personName: string } | null>(null);
 
   const [renamingPerson, setRenamingPerson] = useState<{ id: string; name: string } | null>(null);
@@ -72,12 +72,16 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
   const [newName, setNewName] = useState('');
   const [isRenaming, setIsRenaming] = useState(false);
 
+  const [marriageDay, setMarriageDay] = useState('1');
+  const [marriageMonth, setMarriageMonth] = useState('0');
+  const [marriageYear, setMarriageYear] = useState('');
+
   const fetchStates = useCallback(async () => {
     try {
       const res = await fetch('/api/person-states');
       const data = await res.json();
       const map: any = {};
-      data.forEach((s: any) => { map[s.personId] = { isDeceased: s.isDeceased === 1 }; });
+      data.forEach((s: any) => { map[s.personId] = { isDeceased: s.isDeceased === 1, deathDate: s.deathDate }; });
       setPersonStates(map);
     } catch (e) { console.error('Failed to fetch person states', e); }
   }, []);
@@ -156,6 +160,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
         data: {
           ...n.data,
           isDeceased: personStates[n.id]?.isDeceased ?? false,
+          deathDate: personStates[n.id]?.deathDate,
           isHighlighted,
         },
         // If filtered, fade out nodes not in the highlighted set
@@ -249,11 +254,12 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
       p1 = addingRelation.personId; p2 = selectedPersonForAdd[0];
       rType = selectedRelType === 'Child' ? 'Parent' : 'Step-Parent';
     }
+    const marriageDate = selectedRelType === 'Spouse' && marriageYear ? `${marriageYear.padStart(4, '0')}-${(Number(marriageMonth) + 1).toString().padStart(2, '0')}-${marriageDay.padStart(2, '0')}` : null;
     try {
       const res = await fetch('/api/relationships', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ person1Id: p1, person2Id: p2, relationshipType: rType }),
+        body: JSON.stringify({ person1Id: p1, person2Id: p2, relationshipType: rType, marriageDate }),
       });
       if (res.ok) { toast.success('Relationship saved!'); setAddingRelation(null); if (onAddVisual) onAddVisual(); }
       else toast.error('Failed to save connection.');
@@ -350,6 +356,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
           fusedRightType,
           fusedLeftType,
           isDeceased: personStates[n.id]?.isDeceased ?? false,
+          deathDate: personStates[n.id]?.deathDate,
         },
         style: { ...n.style, opacity: isConnectedNode ? 1 : (isInitiallyFaded ? 0.1 : 0.4), transition: 'opacity 0.2s' },
       };
@@ -520,6 +527,50 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
                {addingRelation?.category === 'Side' && (<><option value="Sibling">{t('Sibling')}</option><option value="Spouse">{t('Spouse')}</option></>)}
             </select>
             <PeopleDropdown onChange={(ids) => setSelectedPersonForAdd(ids)} peopleIds={selectedPersonForAdd} />
+            
+            {selectedRelType === 'Spouse' && (
+              <div className="flex flex-col gap-2 p-3 border rounded-lg bg-muted/30 animate-in fade-in slide-in-from-top-1 duration-200">
+                <label className="text-xs font-bold uppercase text-muted-foreground">{t('Marriage Date')}</label>
+                <div className="flex gap-2 items-end">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] text-muted-foreground ml-1">{t('Day' as any)}</span>
+                    <select value={marriageDay} onChange={(e) => setMarriageDay(e.target.value)} className="h-8 w-14 border rounded-md text-xs bg-background">
+                      {Array.from({ length: 31 }, (_, i) => (i + 1).toString()).map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1 flex-1">
+                    <span className="text-[10px] text-muted-foreground ml-1">{t('Month' as any)}</span>
+                    <select value={marriageMonth} onChange={(e) => setMarriageMonth(e.target.value)} className="h-8 border rounded-md text-xs bg-background">
+                      {[
+                        { label: 'January', labelEs: 'Enero', value: '0' },
+                        { label: 'February', labelEs: 'Febrero', value: '1' },
+                        { label: 'March', labelEs: 'Marzo', value: '2' },
+                        { label: 'April', labelEs: 'Abril', value: '3' },
+                        { label: 'May', labelEs: 'Mayo', value: '4' },
+                        { label: 'June', labelEs: 'Junio', value: '5' },
+                        { label: 'July', labelEs: 'Julio', value: '6' },
+                        { label: 'August', labelEs: 'Agosto', value: '7' },
+                        { label: 'September', labelEs: 'Septiembre', value: '8' },
+                        { label: 'October', labelEs: 'Octubre', value: '9' },
+                        { label: 'November', labelEs: 'Noviembre', value: '10' },
+                        { label: 'December', labelEs: 'Diciembre', value: '11' },
+                      ].map(m => <option key={m.value} value={m.value}>{lang === 'es' ? m.labelEs : m.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1 flex-1">
+                    <span className="text-[10px] text-muted-foreground ml-1">{t('Year' as any)}</span>
+                    <Input 
+                      className="h-8 text-xs font-mono" 
+                      value={marriageYear} 
+                      onChange={(e) => setMarriageYear(e.target.value)} 
+                      placeholder="YYYY" 
+                      maxLength={4} 
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             <Button disabled={selectedPersonForAdd.length === 0} onClick={submitManualAdd}>Save Relationship</Button>
           </div>
         </DialogContent>
