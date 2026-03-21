@@ -181,6 +181,50 @@ export function buildRelationshipHelpers(relationships: RelRecord[]) {
         }
       }
 
+      // Great-Aunt/Uncle
+      for (const p of tParents) {
+        for (const gp of getParents(p)) {
+          for (const gpsib of getSiblings(gp)) {
+            if (gpsib === nodeId) return { type: 'Great-Aunt/Uncle', path: [targetId, p, gp, nodeId] };
+            if (getSpouses(gpsib).includes(nodeId)) return { type: 'Great-Aunt/Uncle', path: [targetId, p, gp, gpsib, nodeId] };
+          }
+        }
+      }
+
+      // Great-Niece/Nephew
+      for (const s of tSiblings) {
+        for (const c of getChildren(s)) {
+          if (getChildren(c).includes(nodeId)) return { type: 'Great-Niece/Nephew', path: [targetId, s, c, nodeId] };
+          for (const sp of getSpouses(c)) {
+            if (getChildren(sp).includes(nodeId)) return { type: 'Great-Niece/Nephew', path: [targetId, s, c, sp, nodeId] };
+          }
+        }
+      }
+
+      // First Cousin Once Removed
+      for (const p of tParents) {
+        // Parent's Cousin
+        for (const gp of getParents(p)) {
+          for (const gau of getSiblings(gp)) {
+            for (const pc of getChildren(gau)) {
+              if (pc === nodeId) return { type: 'First-Cousin-Once-Removed', path: [targetId, p, gp, gau, nodeId] };
+              if (getSpouses(pc).includes(nodeId)) return { type: 'First-Cousin-Once-Removed', path: [targetId, p, gp, gau, pc, nodeId] };
+            }
+          }
+        }
+      }
+      // MY Cousin's child
+      for (const p of tParents) {
+        for (const au of getSiblings(p)) {
+          for (const c of getChildren(au)) {
+            if (getChildren(c).includes(nodeId)) return { type: 'First-Cousin-Once-Removed-Down', path: [targetId, p, au, c, nodeId] };
+             for (const cs of getSpouses(c)) {
+               if (getChildren(cs).includes(nodeId)) return { type: 'First-Cousin-Once-Removed-Down', path: [targetId, p, au, c, cs, nodeId] };
+             }
+          }
+        }
+      }
+
       return null;
     };
 

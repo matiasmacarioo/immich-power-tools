@@ -20,7 +20,12 @@ export const getEdgeColor = (type: string): string => {
     case 'Chosno-Ancestor':
     case 'Chosno': return '#14b8a6';
     case 'Aunt/Uncle':
-    case 'Niece/Nephew': return '#8b5cf6';
+    case 'Great-Aunt/Uncle':
+    case 'Niece/Nephew': 
+    case 'Great-Niece/Nephew': return '#8b5cf6';
+    case 'Cousin':
+    case 'First-Cousin-Once-Removed':
+    case 'First-Cousin-Once-Removed-Down': return '#f97316';
     case 'Godparent':
     case 'Godchild': return '#0ea5e9';
     case 'Sibling-in-law':
