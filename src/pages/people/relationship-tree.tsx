@@ -36,6 +36,7 @@ export default function RelationshipTree() {
   const [isLoading, setIsLoading] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectedFamily, setSelectedFamily] = useState<string>('__all__');
+  const [hideFiltered, setHideFiltered] = useState(false);
 
   const fetchRelationships = async () => {
     try {
@@ -161,54 +162,64 @@ export default function RelationshipTree() {
 
   /** Sorted unique last names of families with more than 1 member in the graph */
   const familyOptions = useMemo(() => {
-    const inGraph = new Set<string>();
-    relationships.forEach((r) => { inGraph.add(r.person1Id); inGraph.add(r.person2Id); });
-    
-    const countMap = new Map<string, number>();
+    const surnames = new Set<string>();
     people.forEach((p) => {
-      if (inGraph.has(p.id)) {
-        const ln = getLastName(p.name);
-        if (ln) countMap.set(ln, (countMap.get(ln) || 0) + 1);
+      const parts = p.name.trim().split(/\s+/);
+      if (parts.length > 1) {
+        parts.slice(1).forEach(s => { if (s.length > 2) surnames.add(s); });
       }
     });
 
+    const inGraph = new Set<string>();
+    relationships.forEach((r) => { inGraph.add(r.person1Id); inGraph.add(r.person2Id); });
+
+    const countMap = new Map<string, number>();
+    people.forEach((p) => {
+      if (!inGraph.has(p.id)) return;
+      const parts = p.name.trim().split(/\s+/);
+      parts.slice(1).forEach(s => {
+        if (surnames.has(s)) countMap.set(s, (countMap.get(s) || 0) + 1);
+      });
+    });
+
     return Array.from(countMap.entries())
-      .filter(([_, count]) => count > 1)
-      .map(([ln]) => ln)
+      .filter(([_, count]) => count > 2)
+      .map(([s]) => s)
       .sort();
   }, [people, relationships]);
 
-  const { filteredRels, filteredPeople, highlightedIds } = useMemo(() => {
-    if (selectedFamily === '__all__') {
-      return { filteredRels: relationships, filteredPeople: people, highlightedIds: null };
-    }
+  const highlightedIds = useMemo(() => {
+    if (selectedFamily === '__all__') return null;
     
-    // 1. Identify all people with this last name
+    // 1. Identify all people with this family name in ANY of their surnames
     const familyMemberIds = new Set<string>();
     people.forEach((p) => {
-      if (getLastName(p.name) === selectedFamily) familyMemberIds.add(p.id);
+      const parts = p.name.trim().split(/\s+/);
+      if (parts.slice(1).some(s => s === selectedFamily)) familyMemberIds.add(p.id);
     });
 
     // 2. Identify "Heads of Family"
+    // Someone is a head if they have the surname but their parent DOES NOT share it.
     const headsOfFamily = new Set<string>();
     familyMemberIds.forEach((id) => {
-      const hasMemberParent = relationships.some(r => 
+      const hasFamilyParent = relationships.some(r => 
         r.relationshipType === 'Parent' && 
         r.person2Id === id && 
         familyMemberIds.has(r.person1Id)
       );
-      if (!hasMemberParent) headsOfFamily.add(id);
+      if (!hasFamilyParent) headsOfFamily.add(id);
     });
 
-    // 3. Expand fully downwards to all descendants and their spouses
-    const hIds = expandToDescendantsAndSpouses(headsOfFamily, relationships);
-
-    // 4. Actually filter the data for the graph layout
-    const fRels = relationships.filter(r => hIds.has(r.person1Id) && hIds.has(r.person2Id));
-    const fPeople = people.filter(p => hIds.has(p.id));
-
-    return { filteredRels: fRels, filteredPeople: fPeople, highlightedIds: hIds };
+    // 3. Expand downward
+    return expandToDescendantsAndSpouses(headsOfFamily, relationships);
   }, [selectedFamily, people, relationships]);
+
+  const { filteredRels, filteredPeople } = useMemo(() => {
+    if (!highlightedIds) return { filteredRels: relationships, filteredPeople: people };
+    const r = relationships.filter(r => highlightedIds.has(r.person1Id) && highlightedIds.has(r.person2Id));
+    const p = people.filter(p => highlightedIds.has(p.id));
+    return { filteredRels: r, filteredPeople: p };
+  }, [highlightedIds, relationships, people]);
 
   const isFiltered = !!highlightedIds;
 
@@ -216,9 +227,9 @@ export default function RelationshipTree() {
     <PageLayout className="!p-0 !mb-0 flex flex-col">
       <div className="flex-1 w-full relative min-h-[500px]">
         <RelationshipGraph
-          relationships={filteredRels}
-          people={filteredPeople}
-          highlightedIds={highlightedIds}
+          relationships={hideFiltered ? filteredRels : relationships}
+          people={hideFiltered ? filteredPeople : people}
+          highlightedIds={highlightedIds || undefined}
           onAddVisual={refreshData}
         />
 
@@ -260,8 +271,21 @@ export default function RelationshipTree() {
             )}
 
             {isFiltered && (
+              <Button
+                size="sm"
+                variant={hideFiltered ? 'secondary' : 'outline'}
+                className="h-8 text-[10px] shadow-sm backdrop-blur-sm px-2 gap-1.5 border border-primary/20"
+                onClick={() => setHideFiltered(!hideFiltered)}
+                title={hideFiltered ? t('Show All') : t('Hide Filtered')}
+              >
+                {hideFiltered ? <Users size={12} className="text-secondary-foreground" /> : <Users size={12} className="opacity-40" />}
+                {hideFiltered ? 'Ocultos' : 'Limpiar'}
+              </Button>
+            )}
+
+            {isFiltered && (
               <button
-                onClick={() => setSelectedFamily('__all__')}
+                onClick={() => { setSelectedFamily('__all__'); setHideFiltered(false); }}
                 className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20 transition-colors"
                 title="Clear filter"
               >

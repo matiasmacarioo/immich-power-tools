@@ -9,16 +9,19 @@ const CustomEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, ta
     sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, borderRadius: 16,
   });
 
-  const isHovered = !!style?.stroke;
+  const isHovered = !!data?.isHovered;
   const isDashed = isDashedEdge(data?.type);
-  const color = getEdgeColor(data?.type);
+  const relColor = getEdgeColor(data?.type);
+  const isParentLine = data?.type === 'Parent' || data?.type === 'Step-Parent';
+  const defaultColor = isParentLine ? '#555' : relColor;
 
   const edgeStyle = {
     ...style,
-    stroke: isHovered ? style.stroke : color,
-    strokeWidth: isHovered ? 3 : 2,
+    stroke: isHovered ? (style.stroke || relColor) : defaultColor,
+    strokeWidth: isHovered ? 3 : 1.5,
     strokeDasharray: isDashed ? '5,5' : undefined,
-    transition: 'stroke 200ms ease, stroke-width 200ms ease',
+    opacity: style?.opacity || 1,
+    transition: 'stroke 300ms ease, stroke-width 300ms ease, opacity 300ms ease',
   };
 
   const { formatDate, lang } = useLanguage();
@@ -42,7 +45,7 @@ const CustomEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, ta
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             pointerEvents: 'none',
           }}
-          className={`flex flex-col items-center bg-background/90 backdrop-blur-md px-2 py-0.5 rounded-xl border shadow-sm text-[9px] font-medium z-10 transition-opacity duration-200 ${['Sibling', 'Step-Sibling', 'Half-Sibling', 'Cousin'].includes(data?.type) && !marriageDateStr ? 'hidden' : ''} ${isHovered ? 'shadow-lg border-primary/50' : 'opacity-100'}`}
+          className={`flex flex-col items-center bg-background/90 backdrop-blur-md px-2 py-0.5 rounded-xl border shadow-sm text-[9px] font-medium z-0 transition-all duration-300 ${isHovered ? 'opacity-100 shadow-lg border-primary/50' : 'opacity-0'}`}
         >
           <span className="text-muted-foreground"><TypewriterText text={data?.label} /></span>
           {marriageDateStr && (

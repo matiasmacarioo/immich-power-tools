@@ -98,7 +98,7 @@ export default async function handler(
     const personIds = people.map(p => p.id);
     if (personIds.length > 0) {
       const placeholders = personIds.map(() => '?').join(',');
-      const localStates = localDb.prepare(`SELECT personId, alias, isDeceased, deathDate FROM person_states WHERE personId IN (${placeholders})`).all(...personIds) as any[];
+      const localStates = localDb.prepare(`SELECT personId, alias, isDeceased, deathDate, gender FROM person_states WHERE personId IN (${placeholders})`).all(...personIds) as any[];
       const stateMap = new Map(localStates.map(s => [s.personId, s]));
       
       people.forEach((p: any) => {
@@ -106,6 +106,7 @@ export default async function handler(
         p.alias = state?.alias || null;
         p.isDeceased = state?.isDeceased === 1;
         p.deathDate = state?.deathDate || null;
+        p.gender = state?.gender || null;
       });
     }
 

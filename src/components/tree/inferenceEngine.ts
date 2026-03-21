@@ -90,11 +90,20 @@ export function buildRelationshipHelpers(relationships: RelRecord[]) {
     let explicitType: string | null = null;
 
     if (exactEdge) {
-      explicitType = exactEdge.relationshipType;
-      if (explicitType === 'Child') explicitType = exactEdge.person1Id === targetId ? 'Parent' : 'Child';
-
-      if (explicitType && ['Parent', 'Child', 'Spouse', 'Sibling', 'Step-Sibling', 'Half-Sibling'].includes(explicitType)) {
-        return { type: explicitType, path: [targetId, nodeId] };
+      if (exactEdge.relationshipType === 'Parent') {
+        explicitType = exactEdge.person1Id === targetId ? 'Child' : 'Parent';
+      } else if (exactEdge.relationshipType === 'Child') {
+        explicitType = exactEdge.person1Id === targetId ? 'Parent' : 'Child';
+      } else if (exactEdge.relationshipType === 'Godparent') {
+        explicitType = exactEdge.person1Id === targetId ? 'Godchild' : 'Godparent';
+      } else if (exactEdge.relationshipType === 'Godchild') {
+        explicitType = exactEdge.person1Id === targetId ? 'Godparent' : 'Godchild';
+      } else if (exactEdge.relationshipType === 'Parent-in-law') {
+        explicitType = exactEdge.person1Id === targetId ? 'Child-in-law' : 'Parent-in-law';
+      } else if (exactEdge.relationshipType === 'Child-in-law') {
+        explicitType = exactEdge.person1Id === targetId ? 'Parent-in-law' : 'Child-in-law';
+      } else {
+        explicitType = exactEdge.relationshipType;
       }
     }
 
@@ -104,18 +113,28 @@ export function buildRelationshipHelpers(relationships: RelRecord[]) {
     const tSiblings = getSiblings(targetId);
 
     const findBiologicalRelation = (): InferredRelation | null => {
-      // Ancestors
+      // 0. Direct edge from DB is the most explicit for core family roles
+      if (explicitType && ['Parent', 'Child', 'Spouse', 'Sibling'].includes(explicitType)) {
+        return { type: explicitType, path: [targetId, nodeId] };
+      }
+
+      // 1. Inferred Sibling (shared parents)
+      if (tSiblings.includes(nodeId)) return { type: 'Sibling', path: [targetId, nodeId] };
+
+      // 2. Ancestors (Parent, Grandparent...)
       const ancestorPath = findPath(targetId, nodeId, 'up', 5);
       if (ancestorPath) {
+        if (ancestorPath.depth === 1) return { type: 'Parent', path: ancestorPath.path };
         if (ancestorPath.depth === 2) return { type: 'Grandparent', path: ancestorPath.path };
         if (ancestorPath.depth === 3) return { type: 'Great-Grandparent', path: ancestorPath.path };
         if (ancestorPath.depth === 4) return { type: 'Great-Great-Grandparent', path: ancestorPath.path };
         if (ancestorPath.depth === 5) return { type: 'Chosno-Ancestor', path: ancestorPath.path };
       }
 
-      // Descendants
+      // 3. Descendants (Child, Grandchild...)
       const descendantPath = findPath(targetId, nodeId, 'down', 5);
       if (descendantPath) {
+        if (descendantPath.depth === 1) return { type: 'Child', path: descendantPath.path };
         if (descendantPath.depth === 2) return { type: 'Grandchild', path: descendantPath.path };
         if (descendantPath.depth === 3) return { type: 'Great-Grandchild', path: descendantPath.path };
         if (descendantPath.depth === 4) return { type: 'Great-Great-Grandchild', path: descendantPath.path };
@@ -166,7 +185,17 @@ export function buildRelationshipHelpers(relationships: RelRecord[]) {
     };
 
     const bioRel = findBiologicalRelation();
-    if (bioRel) return { type: explicitType || bioRel.type, path: bioRel.path };
+    
+    // Priority: 
+    // 1. Biological relationship found by findBiologicalRelation (even if an explicit social role exists)
+    // 2. Explicit relationship from exactEdge
+    if (bioRel) {
+      // If we have a bioRel AND an explicitType, we check if explicitType is "stronger"
+      // Usually social roles like Godparent are additions to bio roles.
+      // But if bioRel is a direct parent/child/sibling, it's usually what the user expects to see.
+      return { type: bioRel.type, path: bioRel.path };
+    }
+    
     if (explicitType) return { type: explicitType, path: [targetId, nodeId] };
 
     return null;

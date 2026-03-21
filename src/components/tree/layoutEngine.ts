@@ -11,7 +11,7 @@ interface LayoutOptions {
   relationships: any[];
   peopleMap: Record<string, { name: string; thumbnailPath?: string }>;
   handleAddRelationClick: (info: any) => void;
-  translateLabel: (key: string) => string;
+  translateLabel: (key: string, gender?: 'male' | 'female' | 'other' | null) => string;
   getParents: (id: string) => string[];
   getChildren: (id: string) => string[];
   getSpouses: (id: string) => string[];
@@ -93,6 +93,7 @@ export function buildLayoutedGraph(opts: LayoutOptions): {
             imageUrl: peopleMap[id]?.thumbnailPath || '',
             birthDate: (peopleMap[id] as any)?.birthDate || null,
             deathDate: (peopleMap[id] as any)?.deathDate || null,
+            gender: (peopleMap[id] as any)?.gender || null,
             alias: (peopleMap[id] as any)?.alias || null,
             onAddRelationClick: handleAddRelationClick,
           },
@@ -381,7 +382,12 @@ export function buildLayoutedGraph(opts: LayoutOptions): {
         sourceHandle,
         targetHandle,
         type: 'customEdge',
-        data: { ...(edge.data || {}), type: edge.label as string, label: translateLabel(edge.label as string), marriageDate: edge.data?.marriageDate },
+        data: { 
+          ...(edge.data || {}), 
+          type: edge.label as string, 
+          label: translateLabel(edge.label as string, (peopleMap[edge.source] as any)?.gender), 
+          marriageDate: edge.data?.marriageDate 
+        },
       };
     });
 

@@ -20,7 +20,7 @@ import { getPersonAssets } from '@/handlers/api/person.handler';
 import { updatePerson } from '@/handlers/api/people.handler';
 import AssetGrid from './AssetGrid';
 import { IAsset } from '@/types/asset';
-import { Skull, Heart, Image as ImageIcon, Calendar } from 'lucide-react';
+import { Skull, Heart, Image as ImageIcon, Calendar, UserRound } from 'lucide-react';
 import PersonBirthdayCell from '../people/PersonBirthdayCell';
 
 interface RelationshipGraphProps {
@@ -35,17 +35,58 @@ const edgeTypes = { customEdge: CustomEdge };
 
 /** Refit view only on the first load of the graph */
 function GraphAutoFitter() {
-  const { fitView } = useReactFlow();
+  const { fitView, setViewport } = useReactFlow();
   const [hasFitted, setHasFitted] = useState(false);
   
   useEffect(() => {
+    const saved = localStorage.getItem('rtree_viewport');
+    if (saved && !hasFitted) {
+      try {
+        const { x, y, zoom } = JSON.parse(saved);
+        setViewport({ x, y, zoom }, { duration: 0 });
+        setHasFitted(true);
+      } catch (e) {
+        console.error('Failed to restore viewport', e);
+      }
+    }
+  }, [setViewport, hasFitted]);
+
+  useEffect(() => {
+    const handleRefit = () => {
+      setTimeout(() => fitView({ duration: 400, padding: 0.2 }), 50);
+    };
+    window.addEventListener('rtree_refit', handleRefit);
+    
     if (!hasFitted) {
       setTimeout(() => {
         fitView({ duration: 400, padding: 0.2 });
         setHasFitted(true);
       }, 50);
     }
+    return () => window.removeEventListener('rtree_refit', handleRefit);
   }, [fitView, hasFitted]);
+  return null;
+}
+
+function ReactFlowSaver() {
+  const { getViewport, getNodes } = useReactFlow();
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const v = getViewport();
+      localStorage.setItem('rtree_viewport', JSON.stringify(v));
+      
+      const nodes = getNodes();
+      const positions: Record<string, {x: number, y: number}> = {};
+      nodes.forEach(n => {
+        positions[n.id] = n.position;
+      });
+      localStorage.setItem('rtree_positions', JSON.stringify(positions));
+    }, 2000); // Save every 2 seconds to not spam localStorage
+    
+    return () => clearInterval(interval);
+  }, [getViewport, getNodes]);
+  
   return null;
 }
 
@@ -64,7 +105,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
   const [photosPage, setPhotosPage] = useState(1);
   const [hasMorePhotos, setHasMorePhotos] = useState(true);
 
-  const [personStates, setPersonStates] = useState<Record<string, { isDeceased: boolean; deathDate?: string | null }>>({});
+  const [personStates, setPersonStates] = useState<Record<string, { isDeceased: boolean; deathDate?: string | null; gender?: 'male' | 'female' | 'other' | null }>>({});
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; personId: string; personName: string } | null>(null);
 
   const [renamingPerson, setRenamingPerson] = useState<{ id: string; name: string } | null>(null);
@@ -81,7 +122,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
       const res = await fetch('/api/person-states');
       const data = await res.json();
       const map: any = {};
-      data.forEach((s: any) => { map[s.personId] = { isDeceased: s.isDeceased === 1, deathDate: s.deathDate }; });
+      data.forEach((s: any) => { map[s.personId] = { isDeceased: s.isDeceased === 1, deathDate: s.deathDate, gender: s.gender }; });
       setPersonStates(map);
     } catch (e) { console.error('Failed to fetch person states', e); }
   }, []);
@@ -101,6 +142,22 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
         setContextMenu(null);
       }
     } catch { toast.error('Failed to update state'); }
+  };
+
+  const toggleGender = async (personId: string, currentGender: string | null) => {
+    const nextGender = currentGender === 'female' ? 'male' : 'female';
+    try {
+      const res = await fetch(`/api/person-states/${personId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gender: nextGender }),
+      });
+      if (res.ok) {
+        toast.success(t(nextGender === 'female' ? 'Marked as Woman' : 'Marked as Man'));
+        fetchStates();
+        setContextMenu(null);
+      }
+    } catch { toast.error('Failed to update gender'); }
   };
 
   const handleRename = async () => {
@@ -164,7 +221,12 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
           isHighlighted,
         },
         // If filtered, fade out nodes not in the highlighted set
-        style: { ...n.style, transition: 'filter 0.4s, opacity 0.4s', filter: isHighlighted ? undefined : 'grayscale(1)', opacity: isHighlighted ? 1 : 0.25 },
+        style: { 
+          ...n.style, 
+          transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), filter 0.4s, opacity 0.4s', 
+          filter: isHighlighted ? undefined : 'grayscale(1)', 
+          opacity: isHighlighted ? 1 : 0.25 
+        },
       }
     });
 
@@ -173,6 +235,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
       return {
         ...e,
         animated: isHighlighted && isFiltered,
+        data: { ...e.data, isHovered: false },
         style: { 
           ...e.style, 
           transition: 'opacity 0.4s', 
@@ -188,10 +251,38 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
+  const [prevCounts, setPrevCounts] = useState({ n: initialNodes.length, e: initialEdges.length });
+
   useEffect(() => {
-    setNodes(initialNodes);
+    const isCountChanged = initialNodes.length !== prevCounts.n || initialEdges.length !== prevCounts.e;
+    
+    setNodes((currentNodes) => {
+      // Load saved positions from localStorage if available
+      const savedPosStr = localStorage.getItem('rtree_positions');
+      const savedPositions = savedPosStr ? JSON.parse(savedPosStr) : {};
+
+      return initialNodes.map((newNode) => {
+        const existingNode = currentNodes.find((n) => n.id === newNode.id);
+        const savedPos = savedPositions[newNode.id];
+        
+        // If count changed, we want a fresh layout from Dagre (initialNodes already has it)
+        if (isCountChanged) return newNode;
+
+        if (existingNode) {
+          return { ...newNode, position: existingNode.position, measured: existingNode.measured };
+        } else if (savedPos) {
+           return { ...newNode, position: savedPos };
+        }
+        return newNode;
+      });
+    });
     setEdges(initialEdges);
-  }, [initialNodes, initialEdges, setNodes, setEdges]);
+
+    if (isCountChanged) {
+      setPrevCounts({ n: initialNodes.length, e: initialEdges.length });
+      window.dispatchEvent(new Event('rtree_refit'));
+    }
+  }, [initialNodes, initialEdges, setNodes, setEdges, prevCounts]);
 
   // ──── Events ────────────────────────────────────────────────────────────────
 
@@ -298,6 +389,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
       return {
         ...ed,
         animated: isPathEdge,
+        data: { ...ed.data, isHovered: isPathEdge },
         style: {
           strokeWidth: isPathEdge ? 3 : 1,
           stroke: isPathEdge ? computedEdgeColor : undefined,
@@ -317,13 +409,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
       const inferredRelation = inferences.get(n.id);
       if (inferredRelation) {
         isConnectedNode = true;
-        const FLIP_MAP: Record<string, string> = {
-          'Parent': 'Child', 'Child': 'Parent',
-          'Step-Parent': 'Step-Child', 'Step-Child': 'Step-Parent',
-          'Godparent': 'Godchild', 'Godchild': 'Godparent',
-        };
-        const flippedType = FLIP_MAP[inferredRelation.type];
-        const displayType = (flippedType && !n.data.hasChildren) ? flippedType : inferredRelation.type;
+        const displayType = inferredRelation.type;
 
         badgeLabel = displayType;
         badgeColor = getEdgeColor(displayType);
@@ -351,12 +437,13 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
         ...n,
         data: {
           ...n.data,
-          hoverBadge: badgeLabel ? t(badgeLabel) : undefined,
+          hoverBadge: badgeLabel ? t(badgeLabel, personStates[n.id]?.gender) : undefined,
           hoverColor: badgeColor,
           fusedRightType,
           fusedLeftType,
           isDeceased: personStates[n.id]?.isDeceased ?? false,
           deathDate: personStates[n.id]?.deathDate,
+          isHighlighted: !isInitiallyFaded,
         },
         style: { ...n.style, opacity: isConnectedNode ? 1 : (isInitiallyFaded ? 0.1 : 0.4), transition: 'opacity 0.2s' },
       };
@@ -369,6 +456,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
       const isHighlighted = isFiltered ? (highlightedIds.has(ed.source) && highlightedIds.has(ed.target)) : true;
       return {
         ...ed, animated: isFiltered && isHighlighted,
+        data: { ...ed.data, isHovered: false },
         style: {
           strokeWidth: isHighlighted && isFiltered ? 2 : 1,
           stroke: getEdgeColor(ed.data?.type as string || ed.label as string),
@@ -428,6 +516,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
       const isHighlighted = isFiltered ? (highlightedIds.has(ed.source) && highlightedIds.has(ed.target)) : true;
       return {
         ...ed, animated: isHovered || (isFiltered && isHighlighted),
+        data: { ...ed.data, isHovered: isHovered },
         style: {
           strokeWidth: isHovered ? 3 : (isHighlighted && isFiltered ? 2 : 1),
           stroke: isHovered ? getEdgeColor(edgeType as string) : undefined,
@@ -440,11 +529,19 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
       const isConnectedNode = n.id === edge.source || n.id === edge.target;
       const isFiltered = !!highlightedIds;
       const isHighlighted = isFiltered ? highlightedIds.has(n.id) : true;
+      let badgeLabel = (edge.data?.type || edge.label) as string;
+      if (isConnectedNode && n.id === edge.target) {
+        if (badgeLabel === 'Parent') badgeLabel = 'Child';
+        else if (badgeLabel === 'Step-Parent') badgeLabel = 'Step-Child';
+        else if (badgeLabel === 'Godparent') badgeLabel = 'Godchild';
+        else if (badgeLabel === 'Child') badgeLabel = 'Parent'; // Should not happen if normalized
+      }
+
       return {
         ...n,
         data: {
           ...n.data,
-          hoverBadge: isConnectedNode ? (edge.data?.label || edge.label) : undefined,
+          hoverBadge: isConnectedNode ? t(badgeLabel, personStates[n.id]?.gender) : undefined,
           hoverColor: isConnectedNode ? getEdgeColor((edge.data?.type || edge.label) as string) : undefined,
         },
         style: { ...n.style, opacity: isConnectedNode ? 1 : (isHighlighted ? 0.3 : 0.1), transition: 'opacity 0.2s' },
@@ -487,6 +584,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
         <GraphAutoFitter />
         <Controls />
         <Background gap={12} size={1} />
+        <ReactFlowSaver />
       </ReactFlow>
 
       {/* Suggestions panel */}
@@ -502,8 +600,8 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
                     {s.targetImage ? <img src={s.targetImage} alt={s.targetName} className="w-8 h-8 rounded-full object-cover border-2 border-card" /> : <div className="w-8 h-8 rounded-full bg-muted border-2 border-card flex items-center justify-center text-[10px]">?</div>}
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="font-semibold">{t(s.label)}</span>
-                    <span className="text-xs text-muted-foreground">{s.sourceName} {t('is')} {t(s.label)} {t('to')} {s.targetName}</span>
+                    <span className="font-semibold">{t(s.label, personStates[s.sourceId]?.gender)}</span>
+                    <span className="text-xs text-muted-foreground">{s.sourceName} {t('is')} {t(s.label, personStates[s.sourceId]?.gender)} {t('to')} {s.targetName}</span>
                   </div>
                 </div>
                 <Button size="icon" variant="ghost" onClick={() => handleAcceptImplicit(s)} className="h-8 w-8 text-green-500">
@@ -638,6 +736,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
                       initialEditing={true}
                       onSaved={() => {
                         setEditingBirthdayFor(null);
+                        fetchStates();
                         if (onAddVisual) onAddVisual();
                       }}
                     />
@@ -661,6 +760,9 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
           <button onClick={() => { setEditingBirthdayFor({ id: contextMenu.personId, name: contextMenu.personName }); setContextMenu(null); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted text-left"><Edit2 size={14} className="text-purple-500" />{t('Edit Birthday')}</button>
           <button onClick={() => toggleDeceased(contextMenu.personId, personStates[contextMenu.personId]?.isDeceased ?? false)} className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted text-left">
             {personStates[contextMenu.personId]?.isDeceased ? <><Heart size={14} className="text-rose-500 fill-rose-500/20" />{t('Mark as Living')}</> : <><Skull size={14} className="text-muted-foreground" />{t('Mark as Deceased')}</>}
+          </button>
+          <button onClick={() => toggleGender(contextMenu.personId, personStates[contextMenu.personId]?.gender ?? null)} className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted text-left">
+            {personStates[contextMenu.personId]?.gender === 'female' ? <><UserRound size={14} className="text-blue-500" />{t('Mark as Man')}</> : <><UserRound size={14} className="text-pink-500" />{t('Mark as Woman')}</>}
           </button>
         </div>
       )}

@@ -176,7 +176,7 @@ const PersonNode = ({ id, data }: any) => {
         <div className={`overflow-hidden transition-all duration-300 ease-in-out flex flex-col items-start ${isDeceased || data.hoverBadge ? 'max-h-8 opacity-100' : 'max-h-0 opacity-0'}`}>
           {isDeceased && (
             <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/60 leading-none">
-              <TypewriterText text={data.deathDate ? `${t('Deceased')} (${formatDateText(data.deathDate, formatDate, lang)})` : t('Deceased')} />
+              <TypewriterText text={data.deathDate ? `${t('Deceased', data.gender)} (${formatDateText(data.deathDate, formatDate, lang)})` : t('Deceased', data.gender)} />
             </span>
           )}
           {data.hoverBadge && (

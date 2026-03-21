@@ -39,6 +39,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     })
 
+    // Aggressive caching for thumbnails
+    if (proxyPath?.includes('/thumbnail/')) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
+    }
     // Handle the response body properly
     if (response.body) {
       // For binary content or when we need to preserve encoding

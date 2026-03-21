@@ -3,6 +3,7 @@ export interface IPerson {
   name:          string;
   birthDate:     Date | null;
   alias:         string | null;
+  gender:        'male' | 'female' | 'other' | null;
   thumbnailPath: string;
   isDeceased:   boolean;
   deathDate:    Date | string | null;

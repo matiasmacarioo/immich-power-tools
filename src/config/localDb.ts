@@ -32,12 +32,14 @@ localDb.exec(`
     personId TEXT PRIMARY KEY,
     isDeceased INTEGER NOT NULL DEFAULT 0,
     deathDate TEXT,
+    gender TEXT,
     alias TEXT,
     updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
 try { localDb.exec(`ALTER TABLE person_states ADD COLUMN alias TEXT`); } catch(e) {}
 try { localDb.exec(`ALTER TABLE person_states ADD COLUMN deathDate TEXT`); } catch(e) {}
+try { localDb.exec(`ALTER TABLE person_states ADD COLUMN gender TEXT`); } catch(e) {}
 
 // vCard UIDs table for syncing
 localDb.exec(`

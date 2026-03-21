@@ -6,7 +6,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { CalendarIcon, Check, X, Trash2, HelpCircle, Heart, Skull } from 'lucide-react';
+import { CalendarIcon, Check, X, Trash2, HelpCircle, Heart, Skull, Baby, User, UserPlus, UserMinus } from 'lucide-react';
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
 
@@ -29,6 +29,12 @@ const MONTHS = [
   { label: 'October', labelEs: 'Octubre', value: '9' },
   { label: 'November', labelEs: 'Noviembre', value: '10' },
   { label: 'December', labelEs: 'Diciembre', value: '11' },
+];
+
+const GENDERS = [
+  { value: 'male', label: 'Male', labelEs: 'Hombre', icon: '♂' },
+  { value: 'female', label: 'Female', labelEs: 'Mujer', icon: '♀' },
+  { value: 'other', label: 'Other', labelEs: 'Otro', icon: '?' },
 ];
 
 const DAYS = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
@@ -68,6 +74,7 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
   const [name, setName] = useState<string>(person.name);
   const [alias, setAlias] = useState<string>(person.alias || '');
   const [isDeceased, setIsDeceased] = useState<boolean>(person.isDeceased || false);
+  const [gender, setGender] = useState<'male' | 'female' | 'other' | null>(person.gender || null);
   const [deathDay, setDeathDay] = useState<string>(initialDeath ? initialDeath.day : '1');
   const [deathMonth, setDeathMonth] = useState<string>(initialDeath ? initialDeath.month : '0');
   const [deathYear, setDeathYear] = useState<string>(initialDeath ? (initialDeath.year === '1604' ? '' : initialDeath.year) : '');
@@ -89,8 +96,9 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
       setName(person.name);
       setAlias(person.alias || '');
       setIsDeceased(person.isDeceased || false);
+      setGender(person.gender || null);
     }
-  }, [person.birthDate, person.deathDate, person.name, person.alias, person.isDeceased, isEditing]);
+  }, [person.birthDate, person.deathDate, person.name, person.alias, person.isDeceased, person.gender, isEditing]);
 
   const handleSave = async () => {
     setLoading(true);
@@ -117,7 +125,8 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
           body: JSON.stringify({ 
             alias: alias || null,
             isDeceased: isDeceased,
-            deathDate: isDeceased ? dday : null
+            deathDate: isDeceased ? dday : null,
+            gender: gender
           })
         })
       ]);
@@ -187,6 +196,11 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
           )}
         </span>
         {isDeceased && <Skull size={12} className="text-muted-foreground" />}
+        {!isDeceased && person.gender && (
+          <span className={`text-[10px] font-bold ${person.gender === 'male' ? 'text-blue-500' : person.gender === 'female' ? 'text-pink-500' : 'text-muted-foreground'}`}>
+            {GENDERS.find(g => g.value === person.gender)?.icon}
+          </span>
+        )}
       </div>
     );
   }
@@ -210,6 +224,35 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
             onChange={e => setAlias(e.target.value)} 
             placeholder={lang === 'es' ? 'Ejem: El Negro, Pepito' : 'e.g. Buddy, Junior'}
           />
+        </div>
+        
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] uppercase font-bold text-muted-foreground px-1">{t('Gender')}</label>
+          <div className="flex gap-1">
+            {GENDERS.map(g => (
+              <Button
+                key={g.value}
+                variant={gender === g.value ? 'default' : 'outline'}
+                size="sm"
+                className={`flex-1 h-7 text-[10px] gap-1 ${gender === g.value ? 'font-bold' : 'font-normal opacity-70'}`}
+                onClick={() => setGender(g.value as any)}
+              >
+                <span className="text-xs">{g.icon}</span>
+                {lang === 'es' ? g.labelEs : g.label}
+              </Button>
+            ))}
+            {gender && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-7 w-7 p-0" 
+                onClick={() => setGender(null)}
+                title="Clear"
+              >
+                <X size={12} />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
