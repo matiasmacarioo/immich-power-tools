@@ -13,6 +13,20 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.21.0",
+    date: "Mar 21, 2026",
+    changes: [
+      { type: "feature", text: "Person Nicknames (Alias) now supported and synced in the tree and local database" },
+      { type: "feature", text: "Snappy Typewriter animation added for all text elements in the Relationship Graph" },
+      { type: "feature", text: "Cards now intelligently swap between Full Name and Nickname on hover" },
+      { type: "improvement", text: "VCF Export now includes proper name splitting, UID persistent syncing, and relationship mapping" },
+      { type: "improvement", text: "Contact Merge flow is now 'Year-Aware'—it won't overwrite existing birth years with yearless phone data" },
+      { type: "improvement", text: "Tree options menu now opens with a left-click and jumps directly to edit mode" },
+      { type: "improvement", text: "Zoom level and pan position are now preserved when saving or updating data" },
+      { type: "fix", text: "Fixed timezone/off-by-one errors in birthday parsing and simplified unknown year entry" },
+    ],
+  },
+  {
     version: "0.20.0",
     date: "Mar 19, 2026",
     changes: [
