@@ -101,11 +101,15 @@ export function PeopleFilters() {
       <Button
         disabled={prevPage < 1}
         onClick={() => handleChange({ page: prevPage })}
+        aria-label="Previous page"
       >
         <ArrowLeft size={16} />
       </Button>
 
-      <Button onClick={() => handleChange({ page: nextPage })}>
+      <Button
+        onClick={() => handleChange({ page: nextPage })}
+        aria-label="Next page"
+      >
         <ArrowRight size={16} />
       </Button>
       <DropdownMenu>
@@ -113,6 +117,7 @@ export function PeopleFilters() {
           <Button
             variant={"secondary"}
             onClick={() => handleChange({ page: nextPage })}
+            aria-label="Sort options"
           >
             <SortDesc size={16} />
           </Button>
