@@ -247,7 +247,8 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
                 size="sm" 
                 className="h-7 w-7 p-0" 
                 onClick={() => setGender(null)}
-                title="Clear"
+                title={lang === 'es' ? 'Limpiar' : 'Clear'}
+                aria-label={lang === 'es' ? 'Limpiar' : 'Clear'}
               >
                 <X size={12} />
               </Button>
@@ -365,6 +366,7 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
           onClick={handleClear}
           disabled={loading}
           title={lang === 'es' ? 'Eliminar fecha' : 'Delete date'}
+          aria-label={lang === 'es' ? 'Eliminar fecha' : 'Delete date'}
         >
           <Trash2 size={14} />
         </Button>
