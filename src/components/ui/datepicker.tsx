@@ -112,6 +112,7 @@ export function DatePicker({ date: _date, onSelect, iconOnly }: IProps) {
                   size="icon" 
                   className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive transition-colors" 
                   onClick={() => setOpen(false)}
+                  aria-label="Close"
                 >
                   <X className="h-4 w-4" />
                 </Button>
