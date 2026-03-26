@@ -1,3 +1,4 @@
+"use client";
 import { IPerson } from "@/types/person";
 import React, { useRef, useState } from "react";
 import { Avatar } from "../ui/avatar";
@@ -95,29 +96,29 @@ export default function PersonItem({ person, onRemove }: IProps) {
         <div className="absolute bottom-2 w-full flex justify-center items-center">
           <Badge variant={"secondary"} className="text-xs !font-medium font-mono">{person.assetCount} Assets</Badge>
         </div>
-        <div className="absolute top-2 left-2 group-hover:flex hidden items-center gap-2">
+        <div className="absolute top-2 left-2 flex md:hidden md:group-hover:flex items-center gap-2">
           <Link
-            className="bg-green-300 block rounded-lg px-2 py-1 text-sm dark:text-gray-900"
+            className="bg-green-300 block rounded-lg px-3 py-2 md:px-2 md:py-1 text-sm dark:text-gray-900"
             href={`${exImmichUrl}/people/${person.id}`}
             target="_blank"
           >
-            <ArrowUpRight size={16} />
+            <ArrowUpRight className="w-5 h-5 md:w-4 md:h-4" />
           </Link>
           <Link
-            className="bg-gray-300 block rounded-lg px-2 py-1 text-sm dark:text-gray-900"
+            className="bg-gray-300 block rounded-lg px-3 py-2 md:px-2 md:py-1 text-sm dark:text-gray-900"
             href={`/people/${person.id}`}
           >
-            <Info size={16} />
+            <Info className="w-5 h-5 md:w-4 md:h-4" />
           </Link>
         </div>
         <div className="absolute top-2 right-2 flex flex-col gap-2">
-          <PersonMergeDropdown person={person} onRemove={onRemove} />
-          <Button variant="outline" className="!py-0.5 !px-2 text-xs h-7" onClick={() => {
+          <PersonMergeDropdown person={person} onRemove={onRemove} triggerClassName="!py-1.5 !px-3 md:!py-0.5 md:!px-2 text-sm md:text-xs h-9 md:h-7" />
+          <Button variant="outline" className="!py-1.5 !px-3 md:!py-0.5 md:!px-2 text-sm md:text-xs h-9 md:h-7" onClick={() => {
             handleHide(!formData.isHidden);
           }}>
             {formData.isHidden ? "Show" : "Hide"}
           </Button>
-          <ShareAssetsTrigger filters={{ personIds: [person.id] }} buttonProps={{ variant: "outline", className: "!py-0.5 !px-2 text-xs h-7" }} />
+          <ShareAssetsTrigger filters={{ personIds: [person.id] }} buttonProps={{ variant: "outline", className: "!py-1.5 !px-3 md:!py-0.5 md:!px-2 text-sm md:text-xs h-9 md:h-7" }} />
         </div>
       </div>
       {!editMode ? (
