@@ -14,7 +14,7 @@ import { Input } from '../ui/input';
 import { getEdgeColor } from '../tree/edgeColors';
 import PersonNode from '../tree/PersonNode';
 import CustomEdge from '../tree/CustomEdge';
-import { buildLayoutedGraph, NODE_WIDTH, NODE_HEIGHT } from '../tree/layoutEngine';
+import { buildLayoutedGraph } from '../tree/layoutEngine';
 import { buildRelationshipHelpers } from '../tree/inferenceEngine';
 import { getPersonAssets } from '@/handlers/api/person.handler';
 import { updatePerson } from '@/handlers/api/people.handler';
@@ -28,6 +28,8 @@ interface RelationshipGraphProps {
   people: IPerson[];
   highlightedIds?: Set<string> | null;
   onAddVisual?: () => void;
+  isCompactMode?: boolean;
+  isLayoutLocked?: boolean;
 }
 
 const nodeTypes = { person: PersonNode };
@@ -68,20 +70,20 @@ function GraphAutoFitter() {
   return null;
 }
 
-function ReactFlowSaver() {
+function ReactFlowSaver({ isCompactMode }: { isCompactMode: boolean }) {
   const { getViewport, getNodes } = useReactFlow();
   
   useEffect(() => {
     const interval = setInterval(() => {
       const v = getViewport();
-      localStorage.setItem('rtree_viewport', JSON.stringify(v));
+      localStorage.setItem(`rtree_viewport_${isCompactMode ? 'compact' : 'detailed'}`, JSON.stringify(v));
       
       const nodes = getNodes();
       const positions: Record<string, {x: number, y: number}> = {};
       nodes.forEach(n => {
         positions[n.id] = n.position;
       });
-      localStorage.setItem('rtree_positions', JSON.stringify(positions));
+      localStorage.setItem(`rtree_positions_${isCompactMode ? 'compact' : 'detailed'}`, JSON.stringify(positions));
     }, 2000); // Save every 2 seconds to not spam localStorage
     
     return () => clearInterval(interval);
@@ -90,7 +92,7 @@ function ReactFlowSaver() {
   return null;
 }
 
-function GraphInner({ relationships, people, highlightedIds, onAddVisual }: RelationshipGraphProps) {
+function GraphInner({ relationships, people, highlightedIds, onAddVisual, isCompactMode, isLayoutLocked = true }: RelationshipGraphProps) {
   const { theme } = useTheme();
   const { t, lang, formatDate } = useLanguage();
 
@@ -112,6 +114,14 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
   const [editingBirthdayFor, setEditingBirthdayFor] = useState<{ id: string; name: string } | null>(null);
   const [newName, setNewName] = useState('');
   const [isRenaming, setIsRenaming] = useState(false);
+
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 640 : false);
+  useEffect(() => {
+    const checkIsMobile = () => setIsMobile(typeof window !== 'undefined' ? window.innerWidth < 640 : false);
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
 
   const [marriageDay, setMarriageDay] = useState('1');
   const [marriageMonth, setMarriageMonth] = useState('0');
@@ -206,6 +216,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
       getSpouses,
       getSiblings,
       highlightedIds: highlightedIds || undefined,
+      isCompactMode,
     });
 
     const isFiltered = !!highlightedIds;
@@ -246,19 +257,19 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
     });
 
     return { initialNodes: enrichedNodes as Node[], initialEdges: enrichedEdges as Edge[], suggestions: sugg };
-  }, [relationships, peopleMap, handleAddRelationClick, t, getParents, getChildren, getSpouses, getSiblings, personStates, highlightedIds]);
+  }, [relationships, peopleMap, handleAddRelationClick, t, getParents, getChildren, getSpouses, getSiblings, personStates, highlightedIds, isCompactMode]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-  const [prevCounts, setPrevCounts] = useState({ n: initialNodes.length, e: initialEdges.length });
+  const [prevCounts, setPrevCounts] = useState({ n: initialNodes.length, e: initialEdges.length, compact: !!isCompactMode });
 
   useEffect(() => {
-    const isCountChanged = initialNodes.length !== prevCounts.n || initialEdges.length !== prevCounts.e;
+    const isCountChanged = initialNodes.length !== prevCounts.n || initialEdges.length !== prevCounts.e || (!!isCompactMode) !== prevCounts.compact;
     
     setNodes((currentNodes) => {
       // Load saved positions from localStorage if available
-      const savedPosStr = localStorage.getItem('rtree_positions');
+      const savedPosStr = localStorage.getItem(`rtree_positions_${isCompactMode ? 'compact' : 'detailed'}`);
       const savedPositions = savedPosStr ? JSON.parse(savedPosStr) : {};
 
       return initialNodes.map((newNode) => {
@@ -279,10 +290,10 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
     setEdges(initialEdges);
 
     if (isCountChanged) {
-      setPrevCounts({ n: initialNodes.length, e: initialEdges.length });
+      setPrevCounts({ n: initialNodes.length, e: initialEdges.length, compact: !!isCompactMode });
       window.dispatchEvent(new Event('rtree_refit'));
     }
-  }, [initialNodes, initialEdges, setNodes, setEdges, prevCounts]);
+  }, [initialNodes, initialEdges, setNodes, setEdges, prevCounts, isCompactMode]);
 
   // ──── Events ────────────────────────────────────────────────────────────────
 
@@ -566,6 +577,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        nodesDraggable={!isLayoutLocked}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeMouseEnter={onNodeMouseEnter}
@@ -579,17 +591,19 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual }: Rela
         onNodeContextMenu={onNodeContextMenu}
         onEdgeContextMenu={handleEdgeContextMenu}
         colorMode={theme === 'dark' ? 'dark' : 'light'}
+        maxZoom={4}
+        minZoom={0.1}
         fitView
       >
         <GraphAutoFitter />
-        <Controls />
+        {!isMobile && <Controls />}
         <Background gap={12} size={1} />
-        <ReactFlowSaver />
+        <ReactFlowSaver isCompactMode={!!isCompactMode} />
       </ReactFlow>
 
       {/* Suggestions panel */}
       {suggestions.length > 0 && (
-        <div className="absolute top-4 right-4 z-50 bg-card/95 backdrop-blur-sm border rounded-lg shadow-lg sm:w-80 max-h-[40vh] sm:max-h-[80vh] flex flex-col pointer-events-auto">
+        <div className="absolute bottom-4 left-4 right-4 sm:bottom-auto sm:top-4 sm:left-auto sm:right-4 z-50 bg-card/95 backdrop-blur-sm border rounded-lg shadow-lg sm:w-80 max-h-[35vh] sm:max-h-[80vh] flex flex-col pointer-events-auto">
           <div className="p-3 border-b font-semibold bg-muted/50 rounded-t-lg">Suggested Relationships</div>
           <div className="flex flex-col p-2 gap-2 overflow-y-auto">
             {suggestions.map((s) => (

@@ -1,8 +1,7 @@
 import dagre from 'dagre';
 import { Node, Edge, MarkerType } from '@xyflow/react';
 
-export const NODE_WIDTH = 260;
-export const NODE_HEIGHT = 70;
+
 
 const CORE_RENDER_RELS = ['Parent', 'Step-Parent', 'Child', 'Step-Child', 'Spouse', 'Ex-Spouse', 'Separated', 'Estranged', 'Sibling', 'Step-Sibling', 'Half-Sibling'];
 const HORIZONTAL_RELS = ['Sibling', 'Spouse', 'Ex-Spouse', 'Separated', 'Estranged', 'Friend', 'Cousin', 'Step-Sibling', 'Half-Sibling', 'Sibling-in-law'];
@@ -17,6 +16,8 @@ interface LayoutOptions {
   getSpouses: (id: string) => string[];
   getSiblings: (id: string) => string[];
   highlightedIds?: Set<string>;
+  isCompactMode?: boolean;
+  isMobile?: boolean;
 }
 
 export function buildLayoutedGraph(opts: LayoutOptions): {
@@ -24,7 +25,10 @@ export function buildLayoutedGraph(opts: LayoutOptions): {
   layoutedEdges: Edge[];
   suggestions: any[];
 } {
-  const { relationships, peopleMap, handleAddRelationClick, translateLabel, getParents, getChildren, getSpouses, getSiblings, highlightedIds } = opts;
+  const { relationships, peopleMap, handleAddRelationClick, translateLabel, getParents, getChildren, getSpouses, getSiblings, highlightedIds, isCompactMode } = opts;
+
+  const NODE_WIDTH = isCompactMode ? 80 : 260;
+  const NODE_HEIGHT = isCompactMode ? 80 : 70;
 
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
@@ -96,6 +100,7 @@ export function buildLayoutedGraph(opts: LayoutOptions): {
             gender: (peopleMap[id] as any)?.gender || null,
             alias: (peopleMap[id] as any)?.alias || null,
             onAddRelationClick: handleAddRelationClick,
+            isCompactMode,
           },
         };
       }

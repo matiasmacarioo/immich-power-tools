@@ -7,7 +7,7 @@ import { IPerson } from '@/types/person';
 import dynamic from 'next/dynamic';
 import { toast } from 'react-hot-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Download, Upload, Users } from 'lucide-react';
+import { Download, Upload, Users, Menu, LayoutTemplate, Lock, Unlock } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const RelationshipGraph = dynamic(() => import('@/components/shared/RelationshipGraph'), {
@@ -37,6 +37,26 @@ export default function RelationshipTree() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectedFamily, setSelectedFamily] = useState<string>('__all__');
   const [hideFiltered, setHideFiltered] = useState(false);
+  const [isCompactMode, setIsCompactMode] = useState(true);
+  const [isLayoutLocked, setIsLayoutLocked] = useState(true);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('rtree_compact_mode');
+    if (saved !== null) {
+      setIsCompactMode(saved === 'true');
+    }
+    // Default is already true (compact), no need for device detection
+  }, []);
+
+  const toggleCompactMode = () => {
+    setIsCompactMode(prev => {
+      const next = !prev;
+      localStorage.setItem('rtree_compact_mode', String(next));
+      return next;
+    });
+  };
+
+  const toggleSidebar = () => window.dispatchEvent(new Event('toggle-mobile-sidebar'));
 
   const fetchRelationships = async () => {
     try {
@@ -231,10 +251,22 @@ export default function RelationshipTree() {
           people={hideFiltered ? filteredPeople : people}
           highlightedIds={highlightedIds || undefined}
           onAddVisual={refreshData}
+          isCompactMode={isCompactMode}
+          isLayoutLocked={isLayoutLocked}
         />
 
-        <div className="absolute top-4 left-4 z-50 flex flex-col gap-2 pointer-events-auto">
-          <div className="flex items-center gap-2">
+        <div className="absolute top-2 left-2 right-2 sm:right-auto sm:top-4 sm:left-4 z-50 flex flex-col gap-2 pointer-events-auto">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 shadow-sm backdrop-blur-sm px-2 gap-1.5 border sm:hidden bg-background/90"
+              onClick={toggleSidebar}
+              title={t('Menu')}
+            >
+              <Menu size={16} />
+            </Button>
+
             <Button
               id="add-relation-toggle"
               size="sm"
@@ -283,6 +315,27 @@ export default function RelationshipTree() {
               </Button>
             )}
 
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-[10px] shadow-sm backdrop-blur-sm px-2 gap-1.5 border border-primary/20 bg-background/90 transition-all"
+              onClick={toggleCompactMode}
+              title={isCompactMode ? t('Detailed View') : t('Compact View')}
+            >
+              <LayoutTemplate size={12} className={isCompactMode ? "opacity-50" : "text-primary"} />
+              <span className="hidden sm:inline">{isCompactMode ? "Detallado" : "Compacto"}</span>
+            </Button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 shadow-sm backdrop-blur-sm px-2 gap-1.5 border border-primary/20 bg-background/90"
+              onClick={() => setIsLayoutLocked(!isLayoutLocked)}
+              title={isLayoutLocked ? t('Unlock Layout') : t('Lock Layout')}
+            >
+              {isLayoutLocked ? <Lock size={12} className="text-muted-foreground" /> : <Unlock size={12} className="text-primary" />}
+            </Button>
+
             {isFiltered && (
               <button
                 onClick={() => { setSelectedFamily('__all__'); setHideFiltered(false); }}
@@ -295,7 +348,7 @@ export default function RelationshipTree() {
           </div>
 
           {panelOpen && (
-            <div className="bg-card/95 backdrop-blur-sm border rounded-xl shadow-xl p-4 flex flex-col gap-3 w-72 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="bg-card/95 backdrop-blur-sm border rounded-xl shadow-xl p-4 flex flex-col gap-3 w-full sm:w-72 animate-in fade-in slide-in-from-top-2 duration-200">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 {t('Add Relation')}
               </p>
