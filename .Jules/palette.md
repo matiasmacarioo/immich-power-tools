@@ -1,0 +1,3 @@
+## 2024-10-24 - Missing ARIA Labels on Icon-Only Buttons
+**Learning:** Icon-only buttons in the application's shared components (like ThemeSwitcher and Sidebar toggles) frequently lack `aria-label`s and proper `focus-visible` states, relying only on visual cues.
+**Action:** Always verify icon-only interactive elements have semantic labels for screen readers and distinct keyboard focus indicators using Tailwind's `focus-visible:` utilities.
