@@ -7,8 +7,9 @@ import { Gallery } from "react-grid-gallery";
 import LazyGridImage from "../ui/lazy-grid-image";
 import Download from "yet-another-react-lightbox/plugins/download";
 import Video from "yet-another-react-lightbox/plugins/video";
+import Zoom from "yet-another-react-lightbox/plugins/zoom";
 import { usePhotoSelectionContext } from '@/contexts/PhotoSelectionContext';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, UserCircle } from 'lucide-react';
 import { useConfig } from '@/contexts/ConfigContext';
 
 
@@ -17,6 +18,7 @@ interface AssetGridProps {
   isInternal?: boolean;
   selectable?: boolean;
   onSelectionChange?: (ids: string[]) => void;
+  onSetProfilePhoto?: (assetId: string) => void;
 }
 
 interface AssetGridRef {
@@ -25,7 +27,7 @@ interface AssetGridRef {
   unselectAll: () => void;
 }
 
-const AssetGrid = forwardRef<AssetGridRef, AssetGridProps>(({ assets, isInternal = true, selectable = false, onSelectionChange }, ref) => {
+const AssetGrid = forwardRef<AssetGridRef, AssetGridProps>(({ assets, isInternal = true, selectable = false, onSelectionChange, onSetProfilePhoto }, ref) => {
   const [index, setIndex] = useState(-1);
   const [currentSlideIdx, setCurrentSlideIdx] = useState(0);
   const [lastSelectedIndex, setLastSelectedIndex] = useState(-1);
@@ -181,18 +183,56 @@ const AssetGrid = forwardRef<AssetGridRef, AssetGridProps>(({ assets, isInternal
     return () => document.removeEventListener("keydown", blockEscape, true);
   }, [index]);
 
+  // WASD navigation while lightbox is open
+  useEffect(() => {
+    if (index < 0) return;
+    const handleWASD = (e: KeyboardEvent) => {
+      // Don't fire if user is typing in an input/textarea
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (e.key === 'a' || e.key === 'A' || e.key === 'w' || e.key === 'W') {
+        setIndex((i) => Math.max(0, i - 1));
+      } else if (e.key === 'd' || e.key === 'D' || e.key === 's' || e.key === 'S') {
+        setIndex((i) => Math.min(slides.length - 1, i + 1));
+      }
+    };
+    window.addEventListener('keydown', handleWASD);
+    return () => window.removeEventListener('keydown', handleWASD);
+  }, [index, slides.length]);
+
   return (
     <div>
       <Lightbox
         slides={slides}
-        plugins={[Download, Video]}
+        plugins={[Download, Video, Zoom]}
         open={index >= 0}
         index={index}
         close={() => setIndex(-1)}
         controller={{ closeOnBackdropClick: false }}
         on={{ view: ({ index: i }) => setCurrentSlideIdx(i) }}
+        zoom={{
+          scrollToZoom: true,
+          maxZoomPixelRatio: 3,
+        }}
         toolbar={{
           buttons: [
+            onSetProfilePhoto && (
+              <button
+                key="set-profile-photo"
+                className="yarl__button"
+                title="Set as profile photo"
+                onClick={() => {
+                  const currentAssetId = slides[currentSlideIdx]?.id;
+                  if (currentAssetId) {
+                    onSetProfilePhoto(currentAssetId);
+                    setIndex(-1); // Close lightbox so the toast is visible
+                  }
+                }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <UserCircle size={18} strokeWidth={1.75} />
+              </button>
+            ),
             <a
               key="open-in-immich"
               href={slides[currentSlideIdx]?.id ? `${exImmichUrl}/photos/${slides[currentSlideIdx].id}` : '#'}

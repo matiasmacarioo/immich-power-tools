@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../ui/dialog';
 import PeopleDropdown from './PeopleDropdown';
 import { Button } from '../ui/button';
-import { Check, Edit2 } from 'lucide-react';
+import { Check, Edit2, ArrowDownAZ, CalendarArrowUp, CalendarArrowDown } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Input } from '../ui/input';
 
@@ -106,6 +106,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [photosPage, setPhotosPage] = useState(1);
   const [hasMorePhotos, setHasMorePhotos] = useState(true);
+  const [photosSort, setPhotosSort] = useState<'date-asc' | 'date-desc' | 'name'>('date-desc');
 
   const [personStates, setPersonStates] = useState<Record<string, { isDeceased: boolean; deathDate?: string | null; gender?: 'male' | 'female' | 'other' | null }>>({});
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; personId: string; personName: string } | null>(null);
@@ -126,6 +127,9 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
   const [marriageDay, setMarriageDay] = useState('1');
   const [marriageMonth, setMarriageMonth] = useState('0');
   const [marriageYear, setMarriageYear] = useState('');
+
+  // Cache-busting timestamps per personId — survives data refreshes
+  const [thumbnailVersions, setThumbnailVersions] = useState<Record<string, number>>({});
 
   const fetchStates = useCallback(async () => {
     try {
@@ -223,10 +227,16 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
 
     const enrichedNodes = layoutedNodes.map((n) => {
       const isHighlighted = isFiltered ? highlightedIds.has(n.id) : true;
+      // Apply cache-busting to thumbnail if we've updated this person's profile photo
+      const version = thumbnailVersions[n.id];
+      const imageUrl = version
+        ? `${(n.data.imageUrl as string || '').split('?')[0]}?t=${version}`
+        : (n.data.imageUrl as string || '');
       return {
         ...n,
         data: {
           ...n.data,
+          imageUrl,
           isDeceased: personStates[n.id]?.isDeceased ?? false,
           deathDate: personStates[n.id]?.deathDate,
           isHighlighted,
@@ -257,7 +267,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
     });
 
     return { initialNodes: enrichedNodes as Node[], initialEdges: enrichedEdges as Edge[], suggestions: sugg };
-  }, [relationships, peopleMap, handleAddRelationClick, t, getParents, getChildren, getSpouses, getSiblings, personStates, highlightedIds, isCompactMode]);
+  }, [relationships, peopleMap, handleAddRelationClick, t, getParents, getChildren, getSpouses, getSiblings, personStates, highlightedIds, isCompactMode, thumbnailVersions]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -492,6 +502,23 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
     setPhotosPage(1);
     setPersonPhotos([]);
     setHasMorePhotos(true);
+    setPhotosSort('date-desc');
+  };
+
+  const handleSetProfilePhoto = async (assetId: string) => {
+    if (!selectedPersonPhotos) return;
+    const personId = selectedPersonPhotos.id;
+    try {
+      await updatePerson(personId, { featureFaceAssetId: assetId });
+      // Close the dialog (lightbox already closed by AssetGrid)
+      setSelectedPersonPhotos(null);
+      toast.success(t('Profile photo updated!'));
+      // Persist a cache-busting version for this person — survives the data refresh below
+      setThumbnailVersions((prev) => ({ ...prev, [personId]: Date.now() }));
+      if (onAddVisual) onAddVisual();
+    } catch {
+      toast.error(t('Failed to update profile photo'));
+    }
   };
 
   const onNodeClick = useCallback((e: React.MouseEvent, node: Node) => {
@@ -505,7 +532,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
   useEffect(() => {
     if (selectedPersonPhotos) {
       setLoadingPhotos(true);
-      getPersonAssets(selectedPersonPhotos.id, photosPage)
+      getPersonAssets(selectedPersonPhotos.id, photosPage, photosSort)
         .then((assets) => {
           if (photosPage === 1) {
             setPersonPhotos(assets);
@@ -517,7 +544,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
         .catch(() => toast.error('Failed to load photos'))
         .finally(() => setLoadingPhotos(false));
     }
-  }, [selectedPersonPhotos, photosPage]);
+  }, [selectedPersonPhotos, photosPage, photosSort]);
 
   const onEdgeMouseEnter = useCallback((_: React.MouseEvent, edge: Edge) => {
     setEdges((eds) => eds.map((ed) => {
@@ -717,17 +744,49 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
       <Dialog open={!!selectedPersonPhotos} onOpenChange={(open) => !open && setSelectedPersonPhotos(null)} modal={false}>
         <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col !p-6" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
-            <div className="flex items-center justify-between pr-8">
+            <div className="flex items-center justify-between pr-8 gap-2 flex-wrap">
               <DialogTitle>{selectedPersonPhotos?.name}&apos;s Photos</DialogTitle>
-              <Button variant="ghost" size="sm" className="h-8 gap-2" onClick={() => { setRenamingPerson({ id: selectedPersonPhotos!.id, name: selectedPersonPhotos!.name }); setNewName(selectedPersonPhotos!.name); }}>
-                <Edit2 size={14} /> {t('Rename')}
-              </Button>
+              <div className="flex items-center gap-1.5">
+                {/* Sort buttons */}
+                <div className="flex items-center rounded-md border overflow-hidden shadow-sm">
+                  <button
+                    title="Oldest first"
+                    onClick={() => { setPhotosSort('date-asc'); setPhotosPage(1); setPersonPhotos([]); }}
+                    className={`flex items-center gap-1 px-2 py-1 text-xs transition-colors ${
+                      photosSort === 'date-asc' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    <CalendarArrowUp size={13} />
+                  </button>
+                  <button
+                    title="Newest first"
+                    onClick={() => { setPhotosSort('date-desc'); setPhotosPage(1); setPersonPhotos([]); }}
+                    className={`flex items-center gap-1 px-2 py-1 text-xs border-l transition-colors ${
+                      photosSort === 'date-desc' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    <CalendarArrowDown size={13} />
+                  </button>
+                  <button
+                    title="Sort by filename (A→Z)"
+                    onClick={() => { setPhotosSort('name'); setPhotosPage(1); setPersonPhotos([]); }}
+                    className={`flex items-center gap-1 px-2 py-1 text-xs border-l transition-colors ${
+                      photosSort === 'name' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    <ArrowDownAZ size={13} />
+                  </button>
+                </div>
+                <Button variant="ghost" size="sm" className="h-8 gap-2" onClick={() => { setRenamingPerson({ id: selectedPersonPhotos!.id, name: selectedPersonPhotos!.name }); setNewName(selectedPersonPhotos!.name); }}>
+                  <Edit2 size={14} /> {t('Rename')}
+                </Button>
+              </div>
             </div>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto mt-4 min-h-[400px]">
             {loadingPhotos && photosPage === 1 ? <div className="flex justify-center items-center h-full">Loading...</div> : personPhotos.length > 0 ? (
               <div className="flex flex-col gap-4">
-                <AssetGrid assets={personPhotos} isInternal={true} selectable={false} />
+                <AssetGrid assets={personPhotos} isInternal={true} selectable={false} onSetProfilePhoto={handleSetProfilePhoto} />
                 {hasMorePhotos && <Button variant="outline" className="w-full mt-4" onClick={() => setPhotosPage(p => p + 1)} disabled={loadingPhotos}>{loadingPhotos ? "Loading..." : "Load More"}</Button>}
               </div>
             ) : <div className="flex justify-center items-center h-full text-muted-foreground">No photos found.</div>}

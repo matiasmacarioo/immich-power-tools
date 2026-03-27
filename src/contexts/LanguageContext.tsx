@@ -152,6 +152,10 @@ const translations: Record<string, Record<Language, string>> = {
   'Female': { en: 'Female', es: 'Mujer' },
   'Mark as Woman': { en: 'Mark as Woman', es: 'Marcar como mujer' },
   'Mark as Man': { en: 'Mark as Man', es: 'Marcar como hombre' },
+  'Set Profile Photo': { en: 'Set as Profile Photo', es: 'Establecer como foto de perfil' },
+  'Profile photo updated!': { en: 'Profile photo updated!', es: '¡Foto de perfil actualizada!' },
+  'Failed to update profile photo': { en: 'Failed to update profile photo', es: 'Error al actualizar la foto de perfil' },
+  'Rename Person': { en: 'Rename Person', es: 'Renombrar persona' },
 };
 
 const LanguageContext = createContext<LanguageContextType>({

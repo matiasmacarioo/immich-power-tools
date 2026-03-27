@@ -35,6 +35,7 @@ export const updatePerson = (id: string, data: Partial<{
   birthDate: string | null;
   isHidden: boolean;
   alias: string | null;
+  featureFaceAssetId: string | null;
 }>) => {
   return API.put(UPDATE_PERSON_PATH(id), data).then((res) => {
     invalidatePeopleCache();

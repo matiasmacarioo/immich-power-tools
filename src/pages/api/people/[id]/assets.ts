@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { db } from "@/config/db";
 import { getCurrentUser } from "@/handlers/serverUtils/user.utils";
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { assets } from "@/schema/assets.schema";
 import { assetFaces, exif } from "@/schema";
 import { isFlipped } from "@/helpers/asset.helper";
@@ -18,7 +18,7 @@ export default async function handler(
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const { id, page = 1 } = req.query as { id?: string; page?: number };
+    const { id, page = 1, sort = 'date-desc' } = req.query as { id?: string; page?: number; sort?: string };
 
     if (!id) {
       return res.status(400).json({ error: "Person id is required" });
@@ -52,7 +52,8 @@ export default async function handler(
           eq(assets.ownerId, currentUser.id),
         )
       )
-      .orderBy(desc(assets.id), desc(assets.localDateTime))
+      // MUST start with the DISTINCT ON column (assets.id) to satisfy PostgreSQL's constraint
+      .orderBy(asc(assets.id))
       .limit(100)
       .offset(100 * (Number(page) - 1));
 
@@ -68,11 +69,15 @@ export default async function handler(
         orientation: asset?.orientation,
         downloadUrl: asset?.id ? ASSET_VIDEO_PATH(asset.id) : null,
       }))
-      .sort(
-        (a, b) =>
-          new Date(a.localDateTime || 0).getTime() -
-          new Date(b.localDateTime || 0).getTime()
-      );
+      .sort((a, b) => {
+        if (sort === 'date-desc') {
+          return new Date(b.localDateTime || 0).getTime() - new Date(a.localDateTime || 0).getTime();
+        } else if (sort === 'name') {
+          return (a.originalFileName || '').localeCompare(b.originalFileName || '');
+        }
+        // date-asc (default)
+        return new Date(a.localDateTime || 0).getTime() - new Date(b.localDateTime || 0).getTime();
+      });
 
     return res.status(200).json(cleanedAssets);
   } catch (error: any) {

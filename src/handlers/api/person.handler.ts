@@ -6,6 +6,6 @@ export const getPersonInfo = async (personId: string) => {
   return API.get(GET_PERSON_INFO(personId));
 }
 
-export const getPersonAssets = async (personId: string, page: number = 1) => {
-  return API.get(PERSON_ASSETS_PATH(personId, page)).then((assets) => assets.map(cleanUpAsset));
+export const getPersonAssets = async (personId: string, page: number = 1, sort?: string) => {
+  return API.get(PERSON_ASSETS_PATH(personId, page, sort)).then((assets) => assets.map(cleanUpAsset));
 }
