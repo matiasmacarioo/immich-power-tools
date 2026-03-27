@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Autocomplete, AutocompleteOption } from '../ui/autocomplete';
-import { searchPeople } from '@/handlers/api/people.handler';
+import { createPerson, searchPeople } from '@/handlers/api/people.handler';
 import { getPersonInfo } from '@/handlers/api/person.handler';
 
 interface IPeopleDropdownProps {
@@ -46,6 +46,16 @@ export default function PeopleDropdown({ peopleIds, onChange }: IPeopleDropdownP
              setSelectedPerson(null);
              onChange([]);
            }
+        }}
+        onCreateNew={(name) => {
+          createPerson(name).then((newPerson) => {
+            setSelectedPerson({
+              label: newPerson.name,
+              value: newPerson.id,
+              imageUrl: newPerson.thumbnailPath
+            });
+            onChange([newPerson.id]);
+          });
         }}
       />
     </div>

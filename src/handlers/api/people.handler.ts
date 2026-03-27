@@ -1,4 +1,4 @@
-import { LIST_PEOPLE_PATH, MERGE_PERSON_PATH, SEARCH_PEOPLE_PATH, SIMILAR_FACES_PATH, UPDATE_PERSON_PATH } from "@/config/routes"
+import { CREATE_PERSON_PATH, LIST_PEOPLE_PATH, MERGE_PERSON_PATH, LOCAL_MERGE_PERSON_PATH, SEARCH_PEOPLE_PATH, SIMILAR_FACES_PATH, UPDATE_PERSON_PATH } from "@/config/routes"
 import { cleanUpPerson } from "@/helpers/person.helper";
 import API from "@/lib/api"
 import { IPeopleListResponse, IPerson } from "@/types/person"
@@ -28,6 +28,13 @@ export const listPeople = (filters: IPersonListFilters): Promise<IPeopleListResp
 let cachedPeopleForSearch: IPerson[] | null = null;
 export const invalidatePeopleCache = () => {
   cachedPeopleForSearch = null;
+};
+
+export const createPerson = (name: string): Promise<IPerson> => {
+  return API.post(CREATE_PERSON_PATH, { name }).then((res) => {
+    invalidatePeopleCache();
+    return res as IPerson;
+  });
 };
 
 export const updatePerson = (id: string, data: Partial<{
@@ -73,8 +80,9 @@ export const searchPeople = async (name: string) => {
   return results.slice(0, 50);
 }
 
-export const mergePerson = (id: string, targetIds: string[]) => {
-  return API.post(MERGE_PERSON_PATH(id), { ids: targetIds })
+export const mergePerson = async (id: string, targetIds: string[]) => {
+  await API.post(LOCAL_MERGE_PERSON_PATH(id), { ids: targetIds });
+  return API.post(MERGE_PERSON_PATH(id), { ids: targetIds });
 }
 
 interface IListSimilarFacesParams {

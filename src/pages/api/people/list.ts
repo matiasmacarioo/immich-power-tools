@@ -15,6 +15,7 @@ import {
   isNull,
   lte,
   ne,
+  or,
   sql,
   sum,
 } from "drizzle-orm";
@@ -53,10 +54,16 @@ export default async function handler(
     const maximumAssetCount = !maxValue || maxValue <= 0 ? 1000000 : maxValue;
 
     const whereClause = and(
-      isNull(assets.duplicateId),
-      eq(assets.visibility, "timeline"),
-      eq(assets.status, "active"),
-      eq(assets.ownerId, currentUser.id),
+      or(
+        isNull(assets.id),
+        and(
+          isNull(assets.duplicateId),
+          eq(assets.visibility, "timeline"),
+          eq(assets.status, "active"),
+          eq(assets.ownerId, currentUser.id)
+        )
+      ),
+      eq(person.ownerId, currentUser.id),
       type === "all" ? undefined : (type === "nameless" ? eq(person.name, "") : ne(person.name, "")),
       query && query.length > 0 ? ilike(person.name, `%${query}%`) : undefined,
       visibility === "visible" ? eq(person.isHidden, false) : visibility === "hidden" ? eq(person.isHidden, true) : undefined
