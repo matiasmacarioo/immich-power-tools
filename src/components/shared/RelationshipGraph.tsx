@@ -645,7 +645,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
                     <span className="text-xs text-muted-foreground">{s.sourceName} {t('is')} {t(s.label, personStates[s.sourceId]?.gender)} {t('to')} {s.targetName}</span>
                   </div>
                 </div>
-                <Button size="icon" variant="ghost" onClick={() => handleAcceptImplicit(s)} className="h-8 w-8 text-green-500">
+                <Button size="icon" variant="ghost" onClick={() => handleAcceptImplicit(s)} className="h-8 w-8 text-green-500" aria-label="Accept implicit relationship">
                   <Check size={16} />
                 </Button>
               </div>
