@@ -20,7 +20,7 @@ export default function Sidebar() {
   const { pathname } = router;
   const [collapsed, setCollapsed] = useState(true);
   const [changelogOpen, setChangelogOpen] = useState(false);
-  const { lang, setLang } = useLanguage();
+  const { lang, setLang, t } = useLanguage();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
@@ -75,10 +75,10 @@ export default function Sidebar() {
                   collapsed && !mobileOpen ? "justify-center px-0 hover:bg-muted" : "px-3",
                   pathname === nav.link ? "text-primary bg-muted/50" : "text-muted-foreground"
                 )}
-                title={collapsed && !mobileOpen ? nav.title : undefined}
+                title={collapsed && !mobileOpen ? t(nav.title) : undefined}
               >
                 {nav.icon}
-                {(!collapsed || mobileOpen) && <span>{nav.title}</span>}
+                {(!collapsed || mobileOpen) && <span>{t(nav.title)}</span>}
               </Link>
             ))}
           </nav>

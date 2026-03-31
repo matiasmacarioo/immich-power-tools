@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import ShareAssetsTrigger from "../shared/ShareAssetsTrigger";
 import { Autocomplete, AutocompleteOption } from "../ui/autocomplete";
 import { AlertDialog, IAlertDialogActions } from "../ui/alert-dialog";
+import { useLanguage } from "@/contexts/LanguageContext";
 interface IProps {
   person: IPerson;
   onRemove: (person: IPerson) => void;
@@ -22,6 +23,7 @@ interface IProps {
 export default function PersonItem({ person, onRemove }: IProps) {
   const { exImmichUrl } = useConfig();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState(person);
@@ -37,14 +39,14 @@ export default function PersonItem({ person, onRemove }: IProps) {
         .then(() => {
           setEditMode(!editMode);
           toast({
-            title: "Success",
-            description: "Person updated successfully",
+            title: t("Success"),
+            description: t("Person updated successfully"),
           });
         })
         .catch(() => {
           toast({
-            title: "Error",
-            description: "Failed to update person",
+            title: t("Error"),
+            description: t("Failed to update person"),
             variant: "destructive",
           });
         })
@@ -80,10 +82,12 @@ export default function PersonItem({ person, onRemove }: IProps) {
   return (
     <div
       className={clsx(
-        "flex flex-col rounded-lg pb-2 border border-2 border-transparent items-center gap-2",
+        "flex flex-col rounded-lg pb-2 border border-2 border-transparent items-center gap-2 transition-[border-color,background-color,box-shadow]",
         {
           "opacity-50": formData.isHidden,
           "border border-blue-500": formData.name,
+          "z-50": true,
+          "hover:z-[100]": true,
         }
       )}
     >
@@ -94,7 +98,7 @@ export default function PersonItem({ person, onRemove }: IProps) {
           alt={person.name}
         />
         <div className="absolute bottom-2 w-full flex justify-center items-center">
-          <Badge variant={"secondary"} className="text-xs !font-medium font-mono">{person.assetCount} Assets</Badge>
+          <Badge variant={"secondary"} className="text-xs !font-medium font-mono">{person.assetCount} {t("Assets")}</Badge>
         </div>
         <div className="absolute top-2 left-2 flex md:hidden md:group-hover:flex items-center gap-2">
           <Link
@@ -115,31 +119,28 @@ export default function PersonItem({ person, onRemove }: IProps) {
           <PersonMergeDropdown 
             person={person} 
             onRemove={onRemove} 
-            triggerClassName="flex items-center justify-start gap-2 max-w-[36px] md:max-w-[28px] hover:max-w-[120px] md:hover:max-w-[120px] !px-2 md:!px-1.5 text-sm md:text-xs h-9 md:h-7 overflow-hidden whitespace-nowrap transition-all duration-300 bg-black/50 hover:bg-black/70 border-none text-white backdrop-blur-md"
+            triggerClassName="flex items-center justify-center w-10 md:w-8 h-10 md:h-8 px-0 border-none text-white bg-black/60 hover:bg-black/80 backdrop-blur-md shadow-lg transition-colors"
             triggerChildren={
               <>
-                <Merge className="w-5 h-5 md:w-4 md:h-4 shrink-0" />
-                <span>Merge</span>
+                <Merge className="w-5 h-5 md:w-4 md:h-4" />
               </>
             }
           />
           <Button 
             variant="outline" 
-            className="flex items-center justify-start gap-2 max-w-[36px] md:max-w-[28px] hover:max-w-[120px] md:hover:max-w-[120px] !px-2 md:!px-1.5 text-sm md:text-xs h-9 md:h-7 overflow-hidden whitespace-nowrap transition-all duration-300 bg-black/50 hover:bg-black/70 border-none text-white backdrop-blur-md" 
+            className="flex items-center justify-center w-10 md:w-8 h-10 md:h-8 px-0 border-none text-white bg-black/60 hover:bg-black/80 backdrop-blur-md shadow-lg transition-colors"
             onClick={() => handleHide(!formData.isHidden)}
           >
-            {formData.isHidden ? <Eye className="w-5 h-5 md:w-4 md:h-4 shrink-0" /> : <EyeOff className="w-5 h-5 md:w-4 md:h-4 shrink-0" />}
-            <span>{formData.isHidden ? "Show" : "Hide"}</span>
+            {formData.isHidden ? <Eye className="w-5 h-5 md:w-4 md:h-4" /> : <EyeOff className="w-5 h-5 md:w-4 md:h-4" />}
           </Button>
           <ShareAssetsTrigger 
             filters={{ personIds: [person.id] }} 
             buttonProps={{ 
               variant: "outline", 
-              className: "flex items-center justify-start gap-2 max-w-[36px] md:max-w-[28px] hover:max-w-[120px] md:hover:max-w-[120px] !px-2 md:!px-1.5 text-sm md:text-xs h-9 md:h-7 overflow-hidden whitespace-nowrap transition-all duration-300 bg-black/50 hover:bg-black/70 border-none text-white backdrop-blur-md",
+              className: "flex items-center justify-center w-10 md:w-8 h-10 md:h-8 px-0 border-none text-white bg-black/60 hover:bg-black/80 backdrop-blur-md shadow-lg transition-colors",
               children: (
                 <>
-                  <Share2 className="w-5 h-5 md:w-4 md:h-4 shrink-0" />
-                  <span>Share</span>
+                  <Share2 className="w-5 h-5 md:w-4 md:h-4" />
                 </>
               )
             }} 
@@ -156,7 +157,7 @@ export default function PersonItem({ person, onRemove }: IProps) {
           {formData.name ? (
             formData.name
           ) : (
-            <span className="text-gray-400">Unknown</span>
+            <span className="text-gray-400">{t("Unknown")}</span>
           )}
         </h2>
       ) : (
@@ -168,7 +169,7 @@ export default function PersonItem({ person, onRemove }: IProps) {
           type="text"
           className="text-lg font-semibold text-center w-full px-2 py-1 rounded-lg"
           defaultValue={formData.name}
-          placeholder="Enter name"
+          placeholder={t("Enter name")}
           autoFocus
           onChange={(e) => {
             setFormData({ ...formData, name: e.target.value });
@@ -178,7 +179,7 @@ export default function PersonItem({ person, onRemove }: IProps) {
             mergeDialogRef.current?.open();
             selectedPerson.current = value;
           }}
-          createNewLabel="Create"
+          createNewLabel={t("Create")}
           disabled={loading}
           onCreateNew={(value) => {
             handleEdit();
@@ -191,13 +192,15 @@ export default function PersonItem({ person, onRemove }: IProps) {
 
       <AlertDialog
         ref={mergeDialogRef}
-        title="Merge Person"
-        description="Are you sure you want to merge this person with the selected person?"
+        title={t("Merge Person")}
+        description={t("Are you sure you want to merge this person with the selected person?")}
         onConfirm={() => {
           if (selectedPerson.current) {
             handleMerge(selectedPerson.current);
           }
         }}
+        confirmLabel={t("Confirm")}
+        cancelLabel={t("Cancel")}
       />
     </div>
   );

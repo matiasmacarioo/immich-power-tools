@@ -33,7 +33,7 @@ export default function MissingLocationDateItem({ record, onSelect, groupBy }: I
     }
     if (!record.label) return "Unknown Date";
     try {
-      return formatDate(parseDate(record.label, "yyyy-MM-dd").toISOString(), "do MMM yyyy");
+      return formatDate(parseDate(record.label, "yyyy-MM-dd").toISOString(), "dd/MM/yyyy");
     } catch (e) {
       console.error("Error formatting date label:", e);
       return record.label;

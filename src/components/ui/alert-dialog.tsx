@@ -136,10 +136,12 @@ interface AlertDialogProps extends AlertDialogPrimitive.AlertDialogProps {
   title: string
   description: string
   onConfirm: () => void | Promise<void>
-  onCancel: () => void | Promise<void>
+  onCancel?: () => void | Promise<void>
   variant?: ButtonProps['variant']
   asChild?: boolean
   disabled?: boolean
+  confirmLabel?: string
+  cancelLabel?: string
 }
 
 const AlertDialog = React.forwardRef<IAlertDialogActions, Partial<AlertDialogProps>>(({
@@ -151,6 +153,8 @@ const AlertDialog = React.forwardRef<IAlertDialogActions, Partial<AlertDialogPro
   variant,
   asChild,
   disabled,
+  confirmLabel = 'Confirm',
+  cancelLabel = 'Cancel',
   ...props
 }, ref) => {
   const [loading, setLoading] = useState(false)
@@ -178,13 +182,13 @@ const AlertDialog = React.forwardRef<IAlertDialogActions, Partial<AlertDialogPro
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel onClick={onCancel}>{cancelLabel}</AlertDialogCancel>
           <AlertDialogAction
             disabled={loading || disabled}
             onClick={handleConfirm}
             variant={variant}
           >
-            Confirm
+            {confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

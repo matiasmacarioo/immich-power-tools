@@ -27,9 +27,9 @@ const formatDateText = (dateStr: string | Date | null, formatDate: (d: Date, f: 
   if (Number.isNaN(date.getTime())) return '';
   
   if (date.getFullYear() === 1604) {
-    return lang === 'es' ? formatDate(date, "d 'de' MMMM") : formatDate(date, 'MMMM d'); // 18 de octubre vs October 18
+    return lang === 'es' ? formatDate(date, "dd/MM") : formatDate(date, 'dd/MM');
   }
-  return formatDate(date, 'PPP');
+  return formatDate(date, 'dd/MM/yyyy');
 }
 
 const calculateAge = (dateStr: string | Date | null, deathDateStr?: string | Date | null): number | null => {
@@ -79,9 +79,7 @@ const PersonNode = ({ id, data }: any) => {
   const handleClick = (e: React.MouseEvent, type: string, pos: string) => {
     e.stopPropagation();
     if (data.onAddRelationClick) {
-      const effectiveType = (pos === 'Top' && !data.hasChildren) ? 'Child' : type;
-      const effectivePos = (pos === 'Top' && !data.hasChildren) ? 'Bottom' : pos;
-      data.onAddRelationClick({ personId: id, relType: effectiveType, category: effectivePos, personName: data.label });
+      data.onAddRelationClick({ personId: id, relType: type, category: pos, personName: data.label });
     }
   };
 
@@ -101,13 +99,15 @@ const PersonNode = ({ id, data }: any) => {
   const mainStyle = {
     ...(hoverColor ? { borderColor: hoverColor } : {}),
     zIndex: hoverColor ? 10 : 1,
-    transition: `${colorTrans}, ${radiusTrans}, ${bgTrans}, ${filterTrans}`,
+    transform: hoverColor ? 'scale(1.02)' : 'scale(1)',
+    transition: `${colorTrans}, ${radiusTrans}, ${bgTrans}, ${filterTrans}, transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 300ms ease`,
     filter: isFaded ? 'grayscale(1)' : undefined,
     opacity: isFaded ? 0.3 : 1,
     pointerEvents: isFaded ? 'none' : 'auto' as any,
   };
 
   const age = calculateAge(data.birthDate, data.deathDate);
+  const showsRange = isDeceased && !!data.birthDate && !!data.deathDate;
 
   let computedRounded = data.roundedClass || 'rounded-xl';
   if (isFusedRight && isFusedLeft) computedRounded = 'rounded-none border-x-0';
@@ -128,17 +128,20 @@ const PersonNode = ({ id, data }: any) => {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        <Handle type="target" position={Position.Top} id="t-top" className="w-3 h-3 bg-transparent border-transparent" style={{ left: 40 }} />
-        <Handle type="target" position={Position.Bottom} id="t-bottom" className="w-3 h-3 bg-transparent border-transparent" style={{ left: 40 }} />
-        <Handle type="target" position={Position.Left} id="t-left" className="w-3 h-3 bg-transparent border-transparent" style={{ top: 40 }} />
-        <Handle type="target" position={Position.Right} id="t-right" className="w-3 h-3 bg-transparent border-transparent" style={{ top: 40 }} />
+        <Handle type="target" position={Position.Top} id="t-top" className="w-full h-full bg-transparent border-none !opacity-0 absolute inset-0 z-0" />
+        <Handle type="target" position={Position.Bottom} id="t-bottom" className="w-full h-full bg-transparent border-none !opacity-0 absolute inset-0 z-0" />
+        <Handle type="target" position={Position.Left} id="t-left" className="w-full h-full bg-transparent border-none !opacity-0 absolute inset-0 z-0" />
+        <Handle type="target" position={Position.Right} id="t-right" className="w-full h-full bg-transparent border-none !opacity-0 absolute inset-0 z-0" />
 
-        <Handle type="source" position={Position.Top} id="s-top" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Parent', 'Top')} style={{ left: 40 }} />
-        <Handle type="source" position={Position.Bottom} id="s-bottom" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Child', 'Bottom')} style={{ left: 40 }} />
-        <Handle type="source" position={Position.Left} id="s-left" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Side', 'Side')} style={{ top: 40 }} />
-        <Handle type="source" position={Position.Right} id="s-right" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Side', 'Side')} style={{ top: 40 }} />
+        <Handle type="source" position={Position.Top} id="s-top" className="w-5 h-5 bg-primary cursor-pointer z-30 !border-2 !border-background shadow-md transition-colors hover:bg-primary/80" onClick={(e) => handleClick(e, 'Parent', 'Top')} style={{ left: 40, top: -6 }} />
+        <Handle type="source" position={Position.Bottom} id="s-bottom" className="w-5 h-5 bg-primary cursor-pointer z-30 !border-2 !border-background shadow-md transition-colors hover:bg-primary/80" onClick={(e) => handleClick(e, 'Child', 'Bottom')} style={{ left: 40, bottom: -6 }} />
+        <Handle type="source" position={Position.Left} id="s-left" className="w-5 h-5 bg-primary cursor-pointer z-30 !border-2 !border-background shadow-md transition-colors hover:bg-primary/80" onClick={(e) => handleClick(e, 'Side', 'Side')} style={{ top: 40, left: -6 }} />
+        <Handle type="source" position={Position.Right} id="s-right" className="w-5 h-5 bg-primary cursor-pointer z-30 !border-2 !border-background shadow-md transition-colors hover:bg-primary/80" onClick={(e) => handleClick(e, 'Side', 'Side')} style={{ top: 40, right: -6 }} />
 
-        <div className={`relative shrink-0 mb-0 w-[80px] h-[80px] rounded-full border-4 shadow-md bg-card flex items-center justify-center z-10 ${!hoverColor ? 'border-border dark:border-neutral-700' : ''}`} style={hoverColor ? { borderColor: hoverColor } : {}}>
+        <div className={`relative shrink-0 mb-0 w-[80px] h-[80px] rounded-full border-4 shadow-md bg-card flex items-center justify-center z-10 ${!hoverColor ? 'border-border dark:border-neutral-700' : ''}`} style={{
+          ...(hoverColor ? { borderColor: hoverColor, boxShadow: `0 0 15px ${hoverColor}44` } : {}),
+          transition: 'all 300ms ease'
+        }}>
           {data.imageUrl ? (
             <img src={data.imageUrl} alt={data.label} className={`w-full h-full rounded-full object-cover bg-muted border-none p-0.5 ${isDeceased ? '' : ''}`} />
           ) : (
@@ -156,18 +159,20 @@ const PersonNode = ({ id, data }: any) => {
             <span className={`font-semibold text-[11px] leading-tight line-clamp-2 w-full text-center text-foreground ${isDeceased ? 'text-muted-foreground italic' : ''}`}>
               <TypewriterText text={isHovered && data.alias ? data.alias : data.label} />
             </span>
-            {data.birthDate && (
+            {(data.birthDate || showsRange) && (
               <span className="text-[9px] text-muted-foreground/90 truncate w-full text-center mt-0.5">
                 <TypewriterText 
-                  text={isHovered && age !== null 
+                  text={!isHovered && age !== null 
                     ? (lang === 'es' ? `${age} años` : `${age} years old`) 
-                    : formatDateText(data.birthDate, formatDate, lang)} 
+                    : showsRange
+                      ? `${formatDateText(data.birthDate, formatDate, lang)} - ${formatDateText(data.deathDate, formatDate, lang)}`
+                      : formatDateText(data.birthDate, formatDate, lang)} 
                 />
               </span>
             )}
             
-            <div className={`overflow-hidden transition-all duration-300 ease-in-out flex flex-col items-center w-full ${isDeceased || data.hoverBadge ? 'max-h-12 opacity-100 mt-0.5 pt-0.5 border-t border-border/50' : 'max-h-0 opacity-0 mt-0 pt-0 border-t-0'}`}>
-              {isDeceased && (
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out flex flex-col items-center w-full ${(isDeceased && !showsRange) || data.hoverBadge ? 'max-h-12 opacity-100 mt-0.5 pt-0.5 border-t border-border/50' : 'max-h-0 opacity-0 mt-0 pt-0 border-t-0'}`}>
+              {isDeceased && !showsRange && (
                 <span className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground/80 leading-tight text-center line-clamp-2 w-full">
                   <TypewriterText text={data.deathDate ? `${t('Deceased', data.gender)} (${formatDateText(data.deathDate, formatDate, lang)})` : t('Deceased', data.gender)} />
                 </span>
@@ -202,21 +207,24 @@ const PersonNode = ({ id, data }: any) => {
   return (
     <div
       className={`flex items-center justify-center gap-3 h-[68px] bg-card border ${!hoverColor ? 'border-border dark:border-neutral-700' : ''} p-2 shadow-sm w-[260px] relative ${computedRounded} ${isDeceased ? 'border-dashed grayscale-[0.1]' : ''}`}
-      style={mainStyle}
+      style={{
+        ...mainStyle,
+        boxShadow: hoverColor ? `0 0 15px ${hoverColor}44` : 'none',
+      }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className={`absolute top-[-1px] bottom-[-1px] bg-card -z-10 ${!hoverColor ? 'border-border dark:border-neutral-700' : ''}`} style={bridgeStyle} />
 
-      <Handle type="target" position={Position.Top} id="t-top" className="w-3 h-3 bg-transparent border-transparent" />
-      <Handle type="target" position={Position.Bottom} id="t-bottom" className="w-3 h-3 bg-transparent border-transparent" />
-      <Handle type="target" position={Position.Left} id="t-left" className="w-3 h-3 bg-transparent border-transparent" />
-      <Handle type="target" position={Position.Right} id="t-right" className="w-3 h-3 bg-transparent border-transparent" />
+      <Handle type="target" position={Position.Top} id="t-top" className="w-full h-full bg-transparent border-none !opacity-0 absolute inset-0 z-0" />
+      <Handle type="target" position={Position.Bottom} id="t-bottom" className="w-full h-full bg-transparent border-none !opacity-0 absolute inset-0 z-0" />
+      <Handle type="target" position={Position.Left} id="t-left" className="w-full h-full bg-transparent border-none !opacity-0 absolute inset-0 z-0" />
+      <Handle type="target" position={Position.Right} id="t-right" className="w-full h-full bg-transparent border-none !opacity-0 absolute inset-0 z-0" />
 
-      <Handle type="source" position={Position.Top} id="s-top" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Parent', 'Top')} />
-      <Handle type="source" position={Position.Bottom} id="s-bottom" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Child', 'Bottom')} />
-      <Handle type="source" position={Position.Left} id="s-left" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Side', 'Side')} />
-      <Handle type="source" position={Position.Right} id="s-right" className="w-3 h-3 bg-primary cursor-pointer hover:scale-150 transition-transform" onClick={(e) => handleClick(e, 'Side', 'Side')} />
+      <Handle type="source" position={Position.Top} id="s-top" className="w-5 h-5 bg-primary cursor-pointer z-30 !border-2 !border-background shadow-md transition-colors hover:bg-primary/80" onClick={(e) => handleClick(e, 'Parent', 'Top')} style={{ top: -6 }} />
+      <Handle type="source" position={Position.Bottom} id="s-bottom" className="w-5 h-5 bg-primary cursor-pointer z-30 !border-2 !border-background shadow-md transition-colors hover:bg-primary/80" onClick={(e) => handleClick(e, 'Child', 'Bottom')} style={{ bottom: -6 }} />
+      <Handle type="source" position={Position.Left} id="s-left" className="w-5 h-5 bg-primary cursor-pointer z-30 !border-2 !border-background shadow-md transition-colors hover:bg-primary/80" onClick={(e) => handleClick(e, 'Side', 'Side')} style={{ left: -6 }} />
+      <Handle type="source" position={Position.Right} id="s-right" className="w-5 h-5 bg-primary cursor-pointer z-30 !border-2 !border-background shadow-md transition-colors hover:bg-primary/80" onClick={(e) => handleClick(e, 'Side', 'Side')} style={{ right: -6 }} />
 
       <div className="relative shrink-0">
         {data.imageUrl ? (
@@ -235,19 +243,21 @@ const PersonNode = ({ id, data }: any) => {
         <span className={`font-semibold text-sm truncate w-full text-left ${isDeceased ? 'text-muted-foreground italic' : ''}`}>
           <TypewriterText text={isHovered && data.alias ? data.alias : data.label} />
         </span>
-        {data.birthDate && (
+        {(data.birthDate || showsRange) && (
           <span className="text-[10px] text-muted-foreground/80 truncate w-full whitespace-nowrap -mt-0.5">
             <TypewriterText 
-              text={isHovered && age !== null 
+              text={!isHovered && age !== null 
                 ? (lang === 'es' ? `${age} años` : `${age} years old`) 
-                : formatDateText(data.birthDate, formatDate, lang)} 
+                : showsRange
+                  ? `${formatDateText(data.birthDate, formatDate, lang)} - ${formatDateText(data.deathDate, formatDate, lang)}`
+                  : formatDateText(data.birthDate, formatDate, lang)} 
             />
           </span>
         )}
         
         {/* Animated Container for Status/Badges to prevent jumping */}
-        <div className={`overflow-hidden transition-all duration-300 ease-in-out flex flex-col items-start ${isDeceased || data.hoverBadge ? 'max-h-8 opacity-100' : 'max-h-0 opacity-0'}`}>
-          {isDeceased && (
+        <div className={`overflow-hidden transition-all duration-300 ease-in-out flex flex-col items-start ${(isDeceased && !showsRange) || data.hoverBadge ? 'max-h-8 opacity-100' : 'max-h-0 opacity-0'}`}>
+          {isDeceased && !showsRange && (
             <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/60 leading-none">
               <TypewriterText text={data.deathDate ? `${t('Deceased', data.gender)} (${formatDateText(data.deathDate, formatDate, lang)})` : t('Deceased', data.gender)} />
             </span>

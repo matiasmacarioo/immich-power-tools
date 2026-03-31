@@ -65,6 +65,7 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
     font-family: 'Outfit', sans-serif;
@@ -105,9 +106,85 @@
 .leaflet-tile-pane {
   z-index: 1 !important;
 }
+
 .leaflet-pane {
   z-index: 2 !important;
 }
+
 .leaflet-control-container {
   z-index: 3 !important;
+}
+
+/* React Flow Connection Fix: Allow dropping anywhere on node */
+.react-flow__container.react-flow__connection-drag-active .react-flow__handle-target {
+  width: 100% !important;
+  height: 100% !important;
+  top: 0 !important;
+  left: 0 !important;
+  transform: none !important;
+  z-index: 1000 !important;
+  opacity: 0 !important;
+  pointer-events: auto !important;
+  border-radius: inherit !important;
+}
+
+@keyframes edge-flow {
+  from {
+    stroke-dashoffset: 20;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes draw-edge {
+  from {
+    stroke-dashoffset: 1500;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes dash-flow {
+  from {
+    stroke-dashoffset: 16;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes enable-dash {
+  to {
+    stroke-dasharray: 8, 8;
+  }
+}
+
+.premium-draw {
+  stroke-dasharray: 1500;
+  stroke-dashoffset: 1500;
+  animation: draw-edge 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+
+  &.keep-flowing {
+    animation:
+      draw-edge 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+      enable-dash 0ms linear 1.2s forwards,
+      dash-flow 1s linear infinite 1.2s;
+  }
+}
+
+/* React Flow Default Animation Override */
+.react-flow__edge.animated path {
+  stroke-dasharray: 8, 8 !important;
+  animation: dash-flow 1s linear infinite !important;
+}
+
+/* New, more robust flowing animation that doesn't snap as much */
+.edge-flowing {
+  stroke-dasharray: 8, 8;
+  animation: dash-flow 1s linear infinite;
 }

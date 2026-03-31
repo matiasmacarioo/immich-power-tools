@@ -36,6 +36,8 @@ import { cn } from "@/lib/utils";
 import { Label } from "../ui/label";
 import { Select, SelectItem, SelectContent, SelectTrigger, SelectValue } from "../ui/select";
 
+import { useLanguage } from "@/contexts/LanguageContext";
+
 interface PersonMergeDropdownProps {
   person: IPerson;
   onRemove?: (person: IPerson) => void;
@@ -51,6 +53,7 @@ export function PersonMergeDropdown({
   triggerClassName,
   triggerChildren,
 }: PersonMergeDropdownProps) {
+  const { t } = useLanguage();
   const [searchedPeople, setSearchedPeople] = useState<IPerson[] | null>(null);
   const [similarPeople, setSimilarPeople] = useState<IPerson[]>([]);
   const [open, setOpen] = useState(false);
@@ -99,8 +102,8 @@ export function PersonMergeDropdown({
       .then(setSimilarPeople)
       .catch(() => {
         toast({
-          title: "Error",
-          description: "Failed to fetch similar people",
+          title: t("Error"),
+          description: t("Failed to fetch similar people"),
         });
       })
       .finally(() => {
@@ -132,8 +135,8 @@ export function PersonMergeDropdown({
       if (index >= ids.length) {
         setOpen(false);
         toast({
-          title: "Success",
-          description: "People merged successfully",
+          title: t("Success"),
+          description: t("People merged successfully"),
         });
         setMerging(false);
         setSelectedPeople([]);
@@ -149,8 +152,8 @@ export function PersonMergeDropdown({
         mergeInBatches(ids, index + 5);
       } catch {
         toast({
-          title: "Error",
-          description: "Failed to merge people",
+          title: t("Error"),
+          description: t("Failed to merge people"),
         });
         setMerging(false);
       }
@@ -187,7 +190,7 @@ export function PersonMergeDropdown({
   const renderPeopleList = (people: IPerson[], title: string) => {
     return (
       <div className="max-h-[400px] min-h-[400px] overflow-y-auto">
-        <p className="pb-2 uppercase">{title}</p>
+        <p className="pb-2 uppercase">{t(title)}</p>
         <div className="grid grid-cols-4 gap-2">
           {people.map((person) => (
             <FaceThumbnail
@@ -212,7 +215,7 @@ export function PersonMergeDropdown({
     if (searchedPeople && searchedPeople?.length === 0) {
       return (
         <div className="min-h-[400px] flex flex-col items-center justify-center">
-          <p>No Results Found</p>
+          <p>{t("No Results Found")}</p>
         </div>
       );
     }
@@ -224,8 +227,8 @@ export function PersonMergeDropdown({
     if (similarPeople && similarPeople.length === 0) {
       return (
         <ErrorBlock
-          title="No Similar People Found"
-          description="Please search for the person"
+          title={t("No Similar People Found")}
+          description={t("Please search for the person")}
           icon={<SearchSlash />}
         />
       );
@@ -235,7 +238,7 @@ export function PersonMergeDropdown({
       return renderPeopleList(similarPeople, "Similar People");
     }
 
-    return <p className="text-xs">Please search for people</p>;
+    return <p className="text-xs">{t("Please search for people")}</p>;
   };
 
   return (
@@ -245,20 +248,20 @@ export function PersonMergeDropdown({
           variant="outline"
           className={cn("!py-0.5 !px-2 text-xs h-7", triggerClassName)}
         >
-          {triggerChildren || "Merge"}
+          {triggerChildren || t("Merge")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            Merge {person.name ? person.name : "Untagged Person"}
+            {t("Merge")} {person.name ? person.name : t("Untagged Person")}
           </DialogTitle>
           <DialogDescription>
             <div className="flex items-center gap-2">
               <p>
                 {selectedPeople.length > 0
-                  ? `Merging ${selectedPeople.length} people to ${person.name}`
-                  : "Search and select people to merge with"}
+                  ? `${t("Merge")} ${selectedPeople.length} ${t("People")} ${t("to")} ${person.name || t("Untagged Person")}`
+                  : t("Search and select people to merge with")}
               </p>
               <DropdownMenu>
                 <DropdownMenuTrigger className="flex gap-1 items-center">
@@ -267,7 +270,7 @@ export function PersonMergeDropdown({
                     alt={primaryPerson.name}
                     className="w-4 h-4"
                   />
-                  <p>{primaryPerson?.name || "Untagged Person"}</p>
+                  <p>{primaryPerson?.name || t("Untagged Person")}</p>
                   <CaretDownIcon />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
@@ -282,7 +285,7 @@ export function PersonMergeDropdown({
                         alt={person.name}
                         className="w-6 h-6"
                       />
-                      <span>{person.name || "Untagged Person"}</span>
+                      <span>{person.name || t("Untagged Person")}</span>
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
@@ -291,7 +294,7 @@ export function PersonMergeDropdown({
           </DialogDescription>
         </DialogHeader>
         <Input
-          placeholder="Search people..."
+          placeholder={t("Search people...")}
           onChange={(e) => {
             handleSearch(e.target.value);
           }}
@@ -299,7 +302,7 @@ export function PersonMergeDropdown({
         <div className="flex gap-2">
         <div className="flex flex-col gap-2 flex-1">
           <Label htmlFor="threshold">
-            Threshold
+            {t("Threshold")}
           </Label>
           <Input
             type="number"
@@ -308,21 +311,21 @@ export function PersonMergeDropdown({
             max="1"
             value={threshold}
             onChange={(e) => setThreshold(parseFloat(e.target.value))}
-            placeholder="Threshold (0 to 1)"
+            placeholder={t("Threshold (0 to 1)")}
           />
         </div>
         <div className="flex flex-col gap-2 flex-1">
           <Label htmlFor="threshold">
-            Name
+            {t("Name")}
           </Label>
          <Select value={name} onValueChange={(value) => setName(value as "nameless" | "tagged")}>
           <SelectTrigger>
-            <SelectValue placeholder="Select a name" />
+            <SelectValue placeholder={t("Select a name")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="tagged">Tagged</SelectItem>
-            <SelectItem value="nameless">Nameless</SelectItem>
+            <SelectItem value="all">{t("All")}</SelectItem>
+            <SelectItem value="tagged">{t("Tagged")}</SelectItem>
+            <SelectItem value="nameless">{t("Nameless")}</SelectItem>
           </SelectContent>
          </Select>
         </div>
@@ -341,7 +344,7 @@ export function PersonMergeDropdown({
                   className="w-6 h-6"
                 />
                 <p className="text-xs text-nowrap">
-                  {person.name ? person.name : <span>Untagged person</span>}
+                  {person.name ? person.name : <span>{t("Untagged person")}</span>}
                 </p>
                 <button
                   className="rounded-full dark:hover:bg-zinc-800 hover:bg-zinc-200 p-1"
@@ -354,7 +357,7 @@ export function PersonMergeDropdown({
           </div>
         ) : (
           <div>
-            <p className="py-4 text-sm text-zinc-500">No Selections Yet</p>
+            <p className="py-4 text-sm text-zinc-500">{t("No Selections Yet")}</p>
           </div>
         )}
 
@@ -366,7 +369,7 @@ export function PersonMergeDropdown({
             }}
             variant="outline"
           >
-            Select All
+            {t("Select All")}
           </Button>
 
           <Button
@@ -377,13 +380,13 @@ export function PersonMergeDropdown({
             }}
             variant="outline"
           >
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button
             onClick={handleMerge}
             disabled={selectedPeople.length === 0 || merging}
           >
-            Merge {selectedPeople.length + 1} People
+            {t("Merge")} {selectedPeople.length + 1} {t("People")}
           </Button>
         </DialogFooter>
       </DialogContent>

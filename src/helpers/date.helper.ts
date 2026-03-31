@@ -1,7 +1,7 @@
 import { addSeconds, addHours, addMinutes, format, parse, addYears } from "date-fns"
 
 export const formatDate = (date: string, outputFormat?: string): string => {
-  return format(date, outputFormat || "PPP")
+  return format(date, outputFormat || "dd/MM/yyyy")
 }
 
 export const parseDate = (date: string, inputFormat: string): Date => {

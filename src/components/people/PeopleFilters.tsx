@@ -4,6 +4,7 @@ import { ImportExportDropdown } from "./ImportExportDropdown";
 import { Button } from "../ui/button";
 import { ArrowLeft, ArrowRight, SortAsc, SortDesc } from "lucide-react";
 import { usePeopleFilterContext } from "@/contexts/PeopleFilterContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Switch } from "../ui/switch";
 import { Label } from "../ui/label";
 import {
@@ -20,6 +21,7 @@ import { removeNullOrUndefinedProperties } from "@/helpers/data.helper";
 
 export function PeopleFilters() {
   const router = useRouter();
+  const { t } = useLanguage();
   const filters = usePeopleFilterContext();
   const { updateContext, page, maximumAssetCount, type = "all", query = "", visibility = "all" } = filters;
 
@@ -49,7 +51,7 @@ export function PeopleFilters() {
     <div className="flex gap-2">
       <Input
         type="text"
-        placeholder="Search by name"
+        placeholder={t("Search by name")}
         className="w-max"
         defaultValue={query}
         onChange={(e) => {
@@ -58,7 +60,7 @@ export function PeopleFilters() {
       />
       <Input
         type="number"
-        placeholder="Max Asset Count"
+        placeholder={t("Max Asset Count")}
         defaultValue={maximumAssetCount}
         onChange={(e) => {
           try {
@@ -75,12 +77,12 @@ export function PeopleFilters() {
         type: value as "all" | "nameless" | "named" 
       })}>
         <SelectTrigger>
-          <SelectValue placeholder="Person Type" />
+          <SelectValue placeholder={t("Person Type")} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All</SelectItem>
-          <SelectItem value="nameless">Nameless</SelectItem>
-          <SelectItem value="named">Named</SelectItem>
+          <SelectItem value="all">{t("All")}</SelectItem>
+          <SelectItem value="nameless">{t("Nameless")}</SelectItem>
+          <SelectItem value="named">{t("Named")}</SelectItem>
         </SelectContent>
       </Select>
 
@@ -89,12 +91,12 @@ export function PeopleFilters() {
           visibility: value as "all" | "visible" | "hidden" 
         })}>
         <SelectTrigger>
-          <SelectValue placeholder="Visibility" />
+          <SelectValue placeholder={t("Visibility")} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All</SelectItem>
-          <SelectItem value="visible">Visible</SelectItem>
-          <SelectItem value="hidden">Hidden</SelectItem>
+          <SelectItem value="all">{t("All")}</SelectItem>
+          <SelectItem value="visible">{t("Visible")}</SelectItem>
+          <SelectItem value="hidden">{t("Hidden")}</SelectItem>
         </SelectContent>
       </Select>
 
@@ -124,7 +126,7 @@ export function PeopleFilters() {
             }
           >
             <SortAsc size={16} />
-            <span>Asset Count - ASC</span>
+            <span>{t("Asset Count - ASC")}</span>
           </DropdownMenuItem>
 
           <DropdownMenuItem
@@ -133,7 +135,7 @@ export function PeopleFilters() {
             }
           >
             <SortDesc size={16} />
-            <span>Asset Count - DESC</span>
+            <span>{t("Asset Count - DESC")}</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
 
@@ -143,7 +145,7 @@ export function PeopleFilters() {
             }
           >
             <SortAsc size={16} />
-            <span>Updated At - ASC</span>
+            <span>{t("Updated At - ASC")}</span>
           </DropdownMenuItem>
 
           <DropdownMenuItem
@@ -152,7 +154,7 @@ export function PeopleFilters() {
             }
           >
             <SortDesc size={16} />
-            <span>Updated At - DESC</span>
+            <span>{t("Updated At - DESC")}</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -161,7 +163,7 @@ export function PeopleFilters() {
             }
           >
             <SortDesc size={16} />
-            <span>Named Co-occurrences - DESC</span>
+            <span>{t("Named Co-occurrences - DESC")}</span>
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() =>
@@ -169,7 +171,7 @@ export function PeopleFilters() {
             }
           >
             <SortAsc size={16} />
-            <span>Named Co-occurrences - ASC</span>
+            <span>{t("Named Co-occurrences - ASC")}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

@@ -49,3 +49,14 @@ localDb.exec(`
     updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
+
+// Blocked suggestions table
+localDb.exec(`
+  CREATE TABLE IF NOT EXISTS blocked_suggestions (
+    id TEXT PRIMARY KEY,
+    person1Id TEXT NOT NULL,
+    person2Id TEXT NOT NULL,
+    relationshipType TEXT,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);

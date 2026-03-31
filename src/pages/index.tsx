@@ -1,5 +1,5 @@
-import PeopleList from "@/components/people/PeopleList";
+import RelationshipTree from "./people/relationship-tree";
 
 export default function Home() {
-  return <PeopleList />
+  return <RelationshipTree />
 }

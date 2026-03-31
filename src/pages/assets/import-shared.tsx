@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { listAlbums } from "@/handlers/api/album.handler";
 import { IAlbum } from "@/types/album";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface IAlbumContributorCount {
   userId: string;
@@ -147,6 +148,7 @@ const formatFileSize = (bytes?: number | null) => {
 };
 
 export default function ImportSharedPage() {
+  const { t } = useLanguage();
   const [shareLink, setShareLink] = useState("");
   const [submittedLink, setSubmittedLink] = useState<string | null>(null);
   const [sharedData, setSharedData] = useState<IImportSharedResponse | null>(null);
@@ -476,12 +478,12 @@ export default function ImportSharedPage() {
                 <CardTitle className="text-xl">{albumDetails.albumName}</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-4 md:grid-cols-3">
-                <InfoRow label="Expires" value={sharedLinkDetails.expiresAt ? formatDate(sharedLinkDetails.expiresAt) : "No expiry"} />
+                <InfoRow label={t('Expires')} value={sharedLinkDetails.expiresAt ? formatDate(sharedLinkDetails.expiresAt) : t('Never Expires')} />
                 {albumDetails && (
                   <>
-                    <InfoRow label="Owner" value={albumDetails.owner?.name ?? "Unknown"} />
-                    <InfoRow label="Assets" value={albumDetails.assetCount} />
-                    <InfoRow label="Date range" value={`${formatDateOnly(albumDetails.startDate)} → ${formatDateOnly(albumDetails.endDate)}`} />
+                    <InfoRow label={t("Owner")} value={albumDetails.owner?.name ?? t("Unknown")} />
+                    <InfoRow label={t("Assets")} value={albumDetails.assetCount} />
+                    <InfoRow label={t("Date range" as any)} value={`${formatDateOnly(albumDetails.startDate)} → ${formatDateOnly(albumDetails.endDate)}`} />
                   </>
                 )}
               </CardContent>

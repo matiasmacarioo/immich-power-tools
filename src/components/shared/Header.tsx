@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "next/router";
 import clsx from "clsx";
 
+import { useLanguage } from "@/contexts/LanguageContext";
+
 interface IProps {
   leftComponent?: React.ReactNode | string;
   rightComponent?: React.ReactNode | string;
@@ -16,6 +18,7 @@ interface IProps {
 }
 export default function Header({ leftComponent, rightComponent, title }: IProps) {
   const { pathname } = useRouter();
+  const { t } = useLanguage();
   const pageTitle = useMemo(() => {
     if (title && typeof title === "string") {
       return title;
@@ -54,7 +57,7 @@ export default function Header({ leftComponent, rightComponent, title }: IProps)
         <SheetTrigger asChild>
           <Button variant="outline" size="icon" className="shrink-0 md:hidden">
             <Menu className="h-5 w-5" />
-            <span className="sr-only">Toggle navigation menu</span>
+            <span className="sr-only">{t("Toggle navigation menu")}</span>
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="flex flex-col">
@@ -71,7 +74,7 @@ export default function Header({ leftComponent, rightComponent, title }: IProps)
                 }
               >
                 {nav.icon}
-                {nav.title}
+                {t(nav.title)}
               </Link>
             ))}
 

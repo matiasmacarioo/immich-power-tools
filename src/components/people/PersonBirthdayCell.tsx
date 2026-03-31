@@ -130,11 +130,11 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
           })
         })
       ]);
-      toast({ title: "Success", description: "Person updated" });
+      toast({ title: t("Success"), description: t("Person updated successfully") });
       setIsEditing(false);
       if (onSaved) onSaved();
     } catch (e) {
-      toast({ title: "Error", description: "Failed to update", variant: "destructive" });
+      toast({ title: t("Error"), description: t("Failed to update person"), variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -144,11 +144,11 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
     setLoading(true);
     try {
       await updatePerson(person.id, { birthDate: null });
-      toast({ title: "Success", description: "Birthday removed" });
+      toast({ title: t("Success"), description: t("Birthday removed") });
       setIsEditing(false);
       if (onSaved) onSaved();
     } catch (e) {
-      toast({ title: "Error", description: "Failed to remove", variant: "destructive" });
+      toast({ title: t("Error"), description: t("Failed to remove"), variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -158,7 +158,7 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
     const initial = parseDateRobust(person.birthDate);
     let label = '';
     if (!initial) {
-      label = lang === 'es' ? 'Sin fecha' : 'No date';
+      label = t('No date');
     } else if (initial.year === '1604') {
       const localD = new Date(2000, Number(initial.month), Number(initial.day));
       label = formatDate(localD, "dd/MM");
@@ -190,7 +190,7 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
                 if (m < 0 || (m === 0 && end.getDate() < start.getDate())) {
                   age--;
                 }
-                return `(${age} ${lang === 'es' ? 'años' : 'years old'})`;
+                return `(${age} ${t('years old')})`;
               })()}
             </span>
           )}
@@ -209,7 +209,7 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
     <div className="flex flex-col gap-3 p-3 border rounded-xl bg-card shadow-lg animate-in fade-in zoom-in-95 duration-200">
       <div className="flex flex-col gap-2">
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] uppercase font-bold text-muted-foreground px-1">{lang === 'es' ? 'Nombre completo' : 'Full Name'}</label>
+          <label className="text-[10px] uppercase font-bold text-muted-foreground px-1">{t('Full Name')}</label>
           <Input 
             className="h-8 text-xs" 
             value={name} 
@@ -217,12 +217,12 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] uppercase font-bold text-muted-foreground px-1">{lang === 'es' ? 'Apodo / Alias' : 'Nickname / Alias'}</label>
+          <label className="text-[10px] uppercase font-bold text-muted-foreground px-1">{t('Nickname / Alias')}</label>
           <Input 
             className="h-8 text-xs italic" 
             value={alias} 
             onChange={e => setAlias(e.target.value)} 
-            placeholder={lang === 'es' ? 'Ejem: El Negro, Pepito' : 'e.g. Buddy, Junior'}
+            placeholder={t("e.g. El Negro, Pepito")}
           />
         </div>
         
@@ -238,7 +238,7 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
                 onClick={() => setGender(g.value as any)}
               >
                 <span className="text-xs">{g.icon}</span>
-                {lang === 'es' ? g.labelEs : g.label}
+                {t(g.label)}
               </Button>
             ))}
             {gender && (
@@ -247,7 +247,7 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
                 size="sm" 
                 className="h-7 w-7 p-0" 
                 onClick={() => setGender(null)}
-                title="Clear"
+                title={t("Clear")}
               >
                 <X size={12} />
               </Button>
@@ -259,7 +259,7 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
       <div className="flex gap-1.5 items-end pt-1 border-t">
         {/* Day Select */}
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] uppercase font-bold text-muted-foreground px-1">{lang === 'es' ? 'Día' : 'Day'}</label>
+          <label className="text-[10px] uppercase font-bold text-muted-foreground px-1">{t('Day')}</label>
           <Select value={day} onValueChange={setDay}>
             <SelectTrigger className="h-8 w-14 text-xs">
               <SelectValue />
@@ -272,15 +272,15 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
 
         {/* Month Select */}
         <div className="flex flex-col gap-1 flex-1">
-          <label className="text-[10px] uppercase font-bold text-muted-foreground px-1">{lang === 'es' ? 'Mes' : 'Month'}</label>
+          <label className="text-[10px] uppercase font-bold text-muted-foreground px-1">{t('Month')}</label>
           <Select value={month} onValueChange={setMonth}>
             <SelectTrigger className="h-8 text-xs">
-              <SelectValue>{MONTHS[Number(month)][lang === 'es' ? 'labelEs' : 'label']}</SelectValue>
+              <SelectValue>{t(MONTHS[Number(month)].label)}</SelectValue>
             </SelectTrigger>
             <SelectContent className="max-h-[250px]">
               {MONTHS.map(m => (
                 <SelectItem key={m.value} value={m.value}>
-                  {m[lang === 'es' ? 'labelEs' : 'label']}
+                  {t(m.label)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -289,12 +289,12 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
 
         {/* Year Input */}
         <div className="flex flex-col gap-1 flex-1">
-          <label className="text-[10px] uppercase font-bold text-muted-foreground px-1">{lang === 'es' ? 'Año' : 'Year'}</label>
+          <label className="text-[10px] uppercase font-bold text-muted-foreground px-1">{t('Year')}</label>
           <Input 
             className="h-8 text-xs font-mono tracking-wider"
             value={year}
             onChange={(e) => setYear(e.target.value)}
-            placeholder={lang === 'es' ? 'Desconocido' : 'Unknown'}
+            placeholder={t("Unknown")}
             maxLength={4}
           />
         </div>
@@ -302,7 +302,7 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
 
       <div className="flex flex-col gap-2 pt-1 border-t">
         <div className="flex items-center justify-between px-1">
-          <Label htmlFor="deceased-switch" className="text-xs font-semibold">{t('Is Deceased')}</Label>
+          <Label htmlFor="deceased-switch" className="text-xs font-semibold">{t('Is Deceased', gender)}</Label>
           <Switch 
             id="deceased-switch" 
             checked={isDeceased} 
@@ -314,7 +314,7 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
           <div className="flex gap-1.5 items-end animate-in fade-in slide-in-from-top-1 duration-200">
             {/* Death Day */}
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] uppercase font-bold text-muted-foreground px-1">{lang === 'es' ? 'Día' : 'Day'}</label>
+              <label className="text-[10px] uppercase font-bold text-muted-foreground px-1">{t('Day')}</label>
               <Select value={deathDay} onValueChange={setDeathDay}>
                 <SelectTrigger className="h-8 w-14 text-xs">
                   <SelectValue />
@@ -327,15 +327,15 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
 
             {/* Death Month */}
             <div className="flex flex-col gap-1 flex-1">
-              <label className="text-[10px] uppercase font-bold text-muted-foreground px-1">{lang === 'es' ? 'Mes' : 'Month'}</label>
+              <label className="text-[10px] uppercase font-bold text-muted-foreground px-1">{t('Month')}</label>
               <Select value={deathMonth} onValueChange={setDeathMonth}>
                 <SelectTrigger className="h-8 text-xs">
-                  <SelectValue>{MONTHS[Number(deathMonth)][lang === 'es' ? 'labelEs' : 'label']}</SelectValue>
+                  <SelectValue>{t(MONTHS[Number(deathMonth)].label)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent className="max-h-[250px]">
                   {MONTHS.map(m => (
                     <SelectItem key={m.value} value={m.value}>
-                      {m[lang === 'es' ? 'labelEs' : 'label']}
+                      {t(m.label)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -344,12 +344,12 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
 
             {/* Death Year */}
             <div className="flex flex-col gap-1 flex-1">
-              <label className="text-[10px] uppercase font-bold text-muted-foreground px-1">{lang === 'es' ? 'Año' : 'Year'}</label>
+              <label className="text-[10px] uppercase font-bold text-muted-foreground px-1">{t('Year')}</label>
               <Input 
                 className="h-8 text-xs font-mono tracking-wider"
                 value={deathYear}
                 onChange={(e) => setDeathYear(e.target.value)}
-                placeholder={lang === 'es' ? 'Año' : 'Year'}
+                placeholder={t("Year")}
                 maxLength={4}
               />
             </div>
@@ -364,7 +364,7 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
           className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10" 
           onClick={handleClear}
           disabled={loading}
-          title={lang === 'es' ? 'Eliminar fecha' : 'Delete date'}
+          title={t("Delete date")}
         >
           <Trash2 size={14} />
         </Button>
@@ -376,7 +376,7 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
             onClick={() => setIsEditing(false)}
             disabled={loading}
           >
-            {lang === 'es' ? 'Cancelar' : 'Cancel'}
+            {t("Cancel")}
           </Button>
           <Button 
             variant="default" 
@@ -385,7 +385,7 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
             onClick={handleSave}
             disabled={loading}
           >
-            <Check size={14} strokeWidth={3} /> {lang === 'es' ? 'Guardar' : 'Save'}
+            <Check size={14} strokeWidth={3} /> {t("Save")}
           </Button>
         </div>
       </div>

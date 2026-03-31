@@ -26,11 +26,14 @@ export const getEdgeColor = (type: string): string => {
     case 'Cousin':
     case 'First-Cousin-Once-Removed':
     case 'First-Cousin-Once-Removed-Down': return '#f97316';
+    case 'Second-Cousin': return '#ea580c';
+    case 'Godparent':
     case 'Godparent':
     case 'Godchild': return '#0ea5e9';
     case 'Sibling-in-law':
     case 'Parent-in-law':
     case 'Child-in-law':
+    case 'Cousin-in-law':
     case 'Grandparent-in-law':
     case 'Grandchild-in-law':
     case 'Great-grandparent-in-law':

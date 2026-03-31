@@ -26,7 +26,7 @@ export default function PotentialDateItem({ record, onSelect }: IProps) {
 
   const dateLabel = useMemo(() => {
     try {
-      return formatDate(parseDate(record.date, "yyyy-MM-dd").toISOString(), "do MMM yyyy")
+      return formatDate(parseDate(record.date, "yyyy-MM-dd").toISOString(), "dd/MM/yyyy")
     } catch (e) {
       console.error("Error formatting date label:", e);
       return record.date;

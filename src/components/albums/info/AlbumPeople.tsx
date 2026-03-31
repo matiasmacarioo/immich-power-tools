@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { CheckIcon } from '@radix-ui/react-icons'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface AlbumPeopleProps {
   album: IAlbum
@@ -32,6 +33,7 @@ export interface IAlbumPeopleRef {
 
 const AlbumPeople = React.forwardRef<IAlbumPeopleRef, AlbumPeopleProps>(({ album, onSelect, readOnly }, ref) => {
   const { exImmichUrl } = useConfig()
+  const { t } = useLanguage()
   const router = useRouter()
   const { query, pathname } = router
   const [people, setPeople] = useState<IAlbumPerson[]>([])
@@ -165,7 +167,7 @@ const AlbumPeople = React.forwardRef<IAlbumPeopleRef, AlbumPeopleProps>(({ album
         }
         src={PERSON_THUBNAIL_PATH(person.id)} alt={person.name} />
       <div className='flex flex-col'>
-        <p className='text-sm'>{person.name || "No Name"}</p>
+        <p className='text-sm'>{person.name || t('Unknown')}</p>
         <p className={
           cn("text-xs text-gray-500 dark:text-gray-400")
         }>{person.numberOfPhotos} photos</p>
@@ -212,7 +214,7 @@ const AlbumPeople = React.forwardRef<IAlbumPeopleRef, AlbumPeopleProps>(({ album
 
             <Link target="_blank" href={`${exImmichUrl}/people/${selectedPerson.id}`}
               className="text-sm font-medium">
-              {selectedPerson.name || "No Name"}
+              {selectedPerson.name || t('Unknown')}
             </Link>
           </div>
           {!readOnly && (
@@ -241,7 +243,7 @@ const AlbumPeople = React.forwardRef<IAlbumPeopleRef, AlbumPeopleProps>(({ album
                   })
                 }} />
               <Button disabled={hidingPerson} variant={"outline"} className="!py-0.5 !px-2 text-xs h-7 flex-1" onClick={() => handleHidePerson(selectedPerson.id)}>
-                Hide
+                {t('Hide')}
               </Button>
             </div>
           )}
@@ -253,7 +255,7 @@ const AlbumPeople = React.forwardRef<IAlbumPeopleRef, AlbumPeopleProps>(({ album
           <AccordionItem value="known-people" className="border-none">
             <AccordionTrigger className="py-2 hover:no-underline">
               <div className="flex items-center gap-2 justify-between w-full">
-                <p className="text-xs font-medium">Known ({knownPeople.length})</p>
+                <p className="text-xs font-medium">{t('Named')} ({knownPeople.length})</p>
               </div>
             </AccordionTrigger>
             <AccordionContent>
@@ -267,7 +269,7 @@ const AlbumPeople = React.forwardRef<IAlbumPeopleRef, AlbumPeopleProps>(({ album
             <AccordionItem value="unknown-people" className="border-none">
               <AccordionTrigger className="py-2 hover:no-underline">
                 <div className="flex items-center gap-2 justify-between w-full">
-                  <p className="text-xs font-medium">Unknown ({unknownPeople.length})</p>
+                  <p className="text-xs font-medium">{t('Unknown')} ({unknownPeople.length})</p>
                   <Checkbox
                     id='unknown-people-checkbox'
                     checked={selectedPeople.length === unknownPeople.length}
@@ -290,7 +292,7 @@ const AlbumPeople = React.forwardRef<IAlbumPeopleRef, AlbumPeopleProps>(({ album
         {selectedPeople.length > 0 && (
           <div className='sticky bottom-0 w-full py-2 bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800'>
             <Button variant="default" className="!py-0.5 !px-2 text-xs h-7 w-full" onClick={handleHideSelectedPeople}>
-              Hide {selectedPeople.length} people
+              {t('Hide')} {selectedPeople.length} {t('People').toLowerCase()}
             </Button>
           </div>
         )}

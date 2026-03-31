@@ -52,7 +52,7 @@ function DuplicateAssetItem({ asset, isSelected, onSelect, selectionMode, albums
         
         {/* Overlay info */}
         <div className="absolute bottom-0 w-full bg-gray-800/70 text-white text-center text-xs font-bold py-1 group-hover:hidden">
-          {formatDate(asset.exifInfo.dateTimeOriginal?.toString(), 'MMM d, yyyy')}
+          {formatDate(asset.exifInfo.dateTimeOriginal?.toString(), 'dd/MM/yyyy')}
         </div>
         
         {/* Keep/Trash label */}

@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react'
 import { Autocomplete, AutocompleteOption } from '../ui/autocomplete';
 import { createPerson, searchPeople } from '@/handlers/api/people.handler';
 import { getPersonInfo } from '@/handlers/api/person.handler';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface IPeopleDropdownProps {
   peopleIds?: string[];
   onChange: (peopleIds: string[]) => void;
 }
 export default function PeopleDropdown({ peopleIds, onChange }: IPeopleDropdownProps) {
+  const { t } = useLanguage();
   const [selectedPerson, setSelectedPerson] = useState<AutocompleteOption | null>(null);
 
   useEffect(() => {
@@ -16,7 +18,7 @@ export default function PeopleDropdown({ peopleIds, onChange }: IPeopleDropdownP
         // Fetch person name if only ID is provided (could be improved with caching)
         getPersonInfo(peopleIds[0]).then((p: any) => {
           setSelectedPerson({
-            label: p?.name || 'Unknown',
+            label: p?.name || t('Unknown'),
             value: p?.id || '',
             imageUrl: p?.thumbnailPath
           });

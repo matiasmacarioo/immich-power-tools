@@ -8,7 +8,7 @@ export const sidebarNavs = [
   // },
   {
     title: "Relationship Tree",
-    link: "/people/relationship-tree",
+    link: "/",
     icon: <GalleryHorizontal className="h-4 w-4" />,
   },
   {
@@ -18,7 +18,7 @@ export const sidebarNavs = [
   },
   {
     title: "Manage People",
-    link: "/",
+    link: "/people",
     icon: <User className="h-4 w-4" />,
   },
   {

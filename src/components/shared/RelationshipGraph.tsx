@@ -20,7 +20,7 @@ import { getPersonAssets } from '@/handlers/api/person.handler';
 import { updatePerson, deletePerson } from '@/handlers/api/people.handler';
 import AssetGrid from './AssetGrid';
 import { IAsset } from '@/types/asset';
-import { Skull, Heart, Image as ImageIcon, Calendar, UserRound, UserMinus } from 'lucide-react';
+import { Skull, Heart, Image as ImageIcon, Calendar, UserRound, UserMinus, X } from 'lucide-react';
 import PersonBirthdayCell from '../people/PersonBirthdayCell';
 import { getFakeAvatar } from '@/helpers/person.helper';
 
@@ -110,6 +110,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
   const [photosSort, setPhotosSort] = useState<'date-asc' | 'date-desc' | 'name'>('date-desc');
 
   const [personStates, setPersonStates] = useState<Record<string, { isDeceased: boolean; deathDate?: string | null; gender?: 'male' | 'female' | 'other' | null }>>({});
+  const [blockedSuggestions, setBlockedSuggestions] = useState<any[]>([]);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; personId: string; personName: string } | null>(null);
 
   const [renamingPerson, setRenamingPerson] = useState<{ id: string; name: string } | null>(null);
@@ -134,15 +135,19 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
 
   const fetchStates = useCallback(async () => {
     try {
-      const res = await fetch('/api/person-states');
-      const data = await res.json();
+      const spRes = await fetch('/api/person-states');
+      const spData = await spRes.json();
       const map: any = {};
-      data.forEach((s: any) => { map[s.personId] = { isDeceased: s.isDeceased === 1, deathDate: s.deathDate, gender: s.gender }; });
+      spData.forEach((s: any) => { map[s.personId] = { isDeceased: s.isDeceased === 1, deathDate: s.deathDate, gender: s.gender }; });
       setPersonStates(map);
-    } catch (e) { console.error('Failed to fetch person states', e); }
+
+      const blRes = await fetch('/api/relationships/blocked');
+      const blData = await blRes.json();
+      setBlockedSuggestions(blData);
+    } catch (e) { console.error('Failed to fetch person states or blocked suggestions', e); }
   }, []);
 
-  useEffect(() => { fetchStates(); }, [fetchStates]);
+  useEffect(() => { fetchStates(); }, [fetchStates, relationships]); // Fetch when relationships change too to stay in sync
 
   const toggleDeceased = async (personId: string, currentState: boolean) => {
     try {
@@ -152,7 +157,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
         body: JSON.stringify({ isDeceased: !currentState }),
       });
       if (res.ok) {
-        toast.success(t(!currentState ? 'Marked as deceased' : 'Marked as living'));
+        toast.success(t(!currentState ? 'Marked as deceased' : 'Marked as living', personStates[personId]?.gender));
         fetchStates();
         setContextMenu(null);
       }
@@ -238,8 +243,15 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
       getChildren,
       getSpouses,
       getSiblings,
-      highlightedIds: highlightedIds || undefined,
       isCompactMode,
+    });
+
+    // Filter out blocked suggestions
+    const filteredSuggestions = sugg.filter(s => {
+      return !blockedSuggestions.some(b => 
+        (b.person1Id === s.sourceId && b.person2Id === s.targetId) ||
+        (b.person1Id === s.targetId && b.person2Id === s.sourceId)
+      );
     });
 
     const isFiltered = !!highlightedIds;
@@ -293,8 +305,8 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
       }
     });
 
-    return { initialNodes: enrichedNodes as Node[], initialEdges: enrichedEdges as Edge[], suggestions: sugg };
-  }, [relationships, peopleMap, handleAddRelationClick, t, getParents, getChildren, getSpouses, getSiblings, personStates, highlightedIds, isCompactMode, thumbnailVersions]);
+    return { initialNodes: enrichedNodes as Node[], initialEdges: enrichedEdges as Edge[], suggestions: filteredSuggestions };
+  }, [relationships, peopleMap, handleAddRelationClick, t, getParents, getChildren, getSpouses, getSiblings, personStates, highlightedIds, isCompactMode, thumbnailVersions, blockedSuggestions]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -341,31 +353,67 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ person1Id: edgeData.sourceId, person2Id: edgeData.targetId, relationshipType: edgeData.label }),
       });
-      if (res.ok) { toast.success(`Accepted ${edgeData.label}!`); if (onAddVisual) onAddVisual(); }
+      if (res.ok) { 
+        toast.success(`Accepted ${edgeData.label}!`); 
+        if (onAddVisual) onAddVisual(); 
+        fetchStates();
+      }
       else toast.error('Failed to accept connection.');
     } catch { toast.error('Error contacting server.'); }
-  }, [onAddVisual]);
+  }, [onAddVisual, fetchStates]);
 
-  const handleConnect = useCallback(async (params: Connection) => {
+  const handleBlockSuggestion = useCallback(async (edgeData: any) => {
+    try {
+      const res = await fetch('/api/relationships/blocked', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          person1Id: edgeData.sourceId, 
+          person2Id: edgeData.targetId, 
+          relationshipType: edgeData.label 
+        }),
+      });
+      if (res.ok) {
+        toast.success(t('Suggestion blacklisted'));
+        fetchStates();
+      } else {
+        toast.error(t('Failed to block suggestion'));
+      }
+    } catch {
+      toast.error(t('Error contacting server'));
+    }
+  }, [fetchStates, t]);
+
+  const handleConnect = useCallback((params: Connection) => {
     if (params.source === params.target) { toast.error('Cannot relate to themselves!'); return; }
     let relType = 'Friend';
-    if (params.sourceHandle === 's-bottom') relType = 'Parent';
-    else if (params.sourceHandle === 's-top') relType = 'Child';
-    else if (params.sourceHandle === 's-left' || params.sourceHandle === 's-right') {
+    let category = 'Side';
+
+    if (params.sourceHandle === 's-bottom') {
+      relType = 'Child';
+      category = 'Bottom';
+    } else if (params.sourceHandle === 's-top') {
+      relType = 'Parent';
+      category = 'Top';
+    } else if (params.sourceHandle === 's-left' || params.sourceHandle === 's-right') {
+      category = 'Side';
       const shareChild = getChildren(params.source!).some((c) => getChildren(params.target!).includes(c));
       const shareParent = getParents(params.source!).some((p) => getParents(params.target!).includes(p));
       relType = shareChild ? 'Spouse' : shareParent ? 'Sibling' : (getChildren(params.source!).length > 0 || getChildren(params.target!).length > 0) ? 'Spouse' : 'Sibling';
     }
-    try {
-      const res = await fetch('/api/relationships', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ person1Id: params.source, person2Id: params.target, relationshipType: relType }),
-      });
-      if (res.ok) { toast.success(`Visual connection saved as ${relType}!`); if (onAddVisual) onAddVisual(); }
-      else toast.error('Failed to save connection.');
-    } catch { toast.error('Error contacting server.'); }
-  }, [onAddVisual, getChildren, getParents]);
+
+    const sourcePerson = peopleMap[params.source!];
+    if (!sourcePerson) return;
+    
+    setAddingRelation({ 
+      personId: params.source!, 
+      personName: sourcePerson.name, 
+      relType, 
+      category 
+    });
+    setSelectedRelType(relType);
+    setSelectedPersonForAdd([params.target!]);
+  }, [peopleMap, getChildren, getParents]);
 
   const handleEdgeContextMenu = useCallback((e: React.MouseEvent, edge: Edge) => {
     e.preventDefault();
@@ -436,13 +484,12 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
 
       return {
         ...ed,
-        animated: isPathEdge,
         data: { ...ed.data, isHovered: isPathEdge },
         style: {
-          strokeWidth: isPathEdge ? 3 : 1,
+          strokeWidth: isPathEdge ? 3.5 : 1,
           stroke: isPathEdge ? computedEdgeColor : undefined,
           opacity: isPathEdge ? 1 : 0.2,
-          transition: 'stroke-width 0.2s, stroke 0.2s, opacity 0.2s',
+          transition: 'stroke-width 750ms cubic-bezier(0.4, 0, 0.2, 1), stroke 750ms cubic-bezier(0.4, 0, 0.2, 1), opacity 750ms cubic-bezier(0.4, 0, 0.2, 1)',
         },
       };
     }));
@@ -493,7 +540,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
           deathDate: personStates[n.id]?.deathDate,
           isHighlighted: !isInitiallyFaded,
         },
-        style: { ...n.style, opacity: isConnectedNode ? 1 : (isInitiallyFaded ? 0.1 : 0.4), transition: 'opacity 0.2s' },
+        style: { ...n.style, opacity: isConnectedNode ? 1 : (isInitiallyFaded ? 0.1 : 0.4), transition: 'opacity 750ms cubic-bezier(0.4, 0, 0.2, 1), filter 750ms ease' },
       };
     }));
   }, [setEdges, setNodes, getInferredRelationship, t, people, personStates, highlightedIds]);
@@ -503,13 +550,13 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
       const isFiltered = !!highlightedIds;
       const isHighlighted = isFiltered ? (highlightedIds.has(ed.source) && highlightedIds.has(ed.target)) : true;
       return {
-        ...ed, animated: isFiltered && isHighlighted,
+        ...ed,
         data: { ...ed.data, isHovered: false },
         style: {
           strokeWidth: isHighlighted && isFiltered ? 2 : 1,
           stroke: getEdgeColor(ed.data?.type as string || ed.label as string),
           opacity: isHighlighted ? 1 : 0.1,
-          transition: 'stroke-width 0.2s, stroke 0.2s, opacity 0.2s',
+          transition: 'stroke-width 750ms cubic-bezier(0.4, 0, 0.2, 1), stroke 750ms cubic-bezier(0.4, 0, 0.2, 1), opacity 750ms cubic-bezier(0.4, 0, 0.2, 1)',
         },
       };
     }));
@@ -519,7 +566,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
       return {
         ...n,
         data: { ...n.data, hoverBadge: undefined, hoverColor: undefined, fusedRightType: null, fusedLeftType: null },
-        style: { ...n.style, opacity: isHighlighted ? 1 : 0.25, filter: isHighlighted ? undefined : 'grayscale(1)', transition: 'opacity 0.2s, filter 0.2s' },
+        style: { ...n.style, opacity: isHighlighted ? 1 : 0.25, filter: isHighlighted ? undefined : 'grayscale(1)', transition: 'opacity 750ms cubic-bezier(0.4, 0, 0.2, 1), filter 750ms ease' },
       }
     }));
   }, [setEdges, setNodes, highlightedIds]);
@@ -580,13 +627,13 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
       const isFiltered = !!highlightedIds;
       const isHighlighted = isFiltered ? (highlightedIds.has(ed.source) && highlightedIds.has(ed.target)) : true;
       return {
-        ...ed, animated: isHovered || (isFiltered && isHighlighted),
+        ...ed,
         data: { ...ed.data, isHovered: isHovered },
         style: {
-          strokeWidth: isHovered ? 3 : (isHighlighted && isFiltered ? 2 : 1),
+          strokeWidth: isHovered ? 3.5 : (isHighlighted && isFiltered ? 2 : 1),
           stroke: isHovered ? getEdgeColor(edgeType as string) : undefined,
           opacity: isHovered ? 1 : (isHighlighted ? 0.6 : 0.1),
-          transition: 'stroke-width 0.2s, stroke 0.2s, opacity 0.2s',
+          transition: 'stroke-width 750ms cubic-bezier(0.4, 0, 0.2, 1), stroke 750ms cubic-bezier(0.4, 0, 0.2, 1), opacity 750ms cubic-bezier(0.4, 0, 0.2, 1)',
         },
       };
     }));
@@ -609,7 +656,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
           hoverBadge: isConnectedNode ? t(badgeLabel, personStates[n.id]?.gender) : undefined,
           hoverColor: isConnectedNode ? getEdgeColor((edge.data?.type || edge.label) as string) : undefined,
         },
-        style: { ...n.style, opacity: isConnectedNode ? 1 : (isHighlighted ? 0.3 : 0.1), transition: 'opacity 0.2s' },
+        style: { ...n.style, opacity: isConnectedNode ? 1 : (isHighlighted ? 0.3 : 0.1), transition: 'opacity 750ms cubic-bezier(0.4, 0, 0.2, 1)' },
       };
     }));
   }, [setEdges, setNodes, highlightedIds]);
@@ -658,7 +705,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
       {/* Suggestions panel */}
       {suggestions.length > 0 && (
         <div className="absolute bottom-4 left-4 right-4 sm:bottom-auto sm:top-4 sm:left-auto sm:right-4 z-50 bg-card/95 backdrop-blur-sm border rounded-lg shadow-lg sm:w-80 max-h-[35vh] sm:max-h-[80vh] flex flex-col pointer-events-auto">
-          <div className="p-3 border-b font-semibold bg-muted/50 rounded-t-lg">Suggested Relationships</div>
+          <div className="p-3 border-b font-semibold bg-muted/50 rounded-t-lg">{t('Suggested Relationships')}</div>
           <div className="flex flex-col p-2 gap-2 overflow-y-auto">
             {suggestions.map((s) => (
               <div key={s.key} className="flex items-center justify-between text-sm p-2 rounded-md hover:bg-muted/50 border border-transparent hover:border-border transition-all group">
@@ -672,9 +719,14 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
                     <span className="text-xs text-muted-foreground">{s.sourceName} {t('is')} {t(s.label, personStates[s.sourceId]?.gender)} {t('to')} {s.targetName}</span>
                   </div>
                 </div>
-                <Button size="icon" variant="ghost" onClick={() => handleAcceptImplicit(s)} className="h-8 w-8 text-green-500">
-                  <Check size={16} />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button size="icon" variant="ghost" onClick={() => handleBlockSuggestion(s)} className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10" title={t('Dismiss')}>
+                    <X size={16} />
+                  </Button>
+                  <Button size="icon" variant="ghost" onClick={() => handleAcceptImplicit(s)} className="h-8 w-8 text-green-500 hover:text-green-600 hover:bg-green-500/10" title={t('Accept')}>
+                    <Check size={16} />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -684,13 +736,13 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
       {/* Add relation dialog */}
       <Dialog open={!!addingRelation} onOpenChange={(open) => !open && setAddingRelation(null)}>
         <DialogContent className="max-w-md !p-6">
-          <DialogHeader><DialogTitle>Add Relationship for {addingRelation?.personName}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('Add Relationship for')} {addingRelation?.personName}</DialogTitle></DialogHeader>
           <div className="flex flex-col gap-4 py-4 mt-2">
-            <label className="text-sm font-medium">Relationship Type</label>
+            <label className="text-sm font-medium">{t('Relationship Type')}</label>
             <select value={selectedRelType} onChange={(e) => setSelectedRelType(e.target.value)} className="w-full border rounded-md p-2 bg-background">
-               {addingRelation?.category === 'Top' && (<><option value="Parent">{t('Parent')}</option><option value="Step-Parent">{t('Step-Parent')}</option></>)}
-               {addingRelation?.category === 'Bottom' && (<><option value="Child">{t('Child')}</option><option value="Step-Child">{t('Step-Child')}</option></>)}
-               {addingRelation?.category === 'Side' && (<><option value="Sibling">{t('Sibling')}</option><option value="Spouse">{t('Spouse')}</option></>)}
+                {addingRelation?.category === 'Top' && (<><option value="Parent">{t('Parent')}</option><option value="Step-Parent">{t('Step-Parent')}</option><option value="Parent-in-law">{t('Parent-in-law')}</option><option value="Great-Aunt/Uncle">{t('Great-Aunt/Uncle')}</option><option value="First-Cousin-Once-Removed">{t('First-Cousin-Once-Removed')}</option></>)}
+                {addingRelation?.category === 'Bottom' && (<><option value="Child">{t('Child')}</option><option value="Step-Child">{t('Step-Child')}</option><option value="Child-in-law">{t('Child-in-law')}</option></>)}
+                {addingRelation?.category === 'Side' && (<><option value="Sibling">{t('Sibling')}</option><option value="Step-Sibling">{t('Step-Sibling')}</option><option value="Cousin">{t('Cousin')}</option><option value="Spouse">{t('Spouse')}</option><option value="Sibling-in-law">{t('Sibling-in-law')}</option></>)}
             </select>
             <PeopleDropdown onChange={(ids) => setSelectedPersonForAdd(ids)} peopleIds={selectedPersonForAdd} />
             
@@ -737,7 +789,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
               </div>
             )}
 
-            <Button disabled={selectedPersonForAdd.length === 0} onClick={submitManualAdd}>Save Relationship</Button>
+            <Button disabled={selectedPersonForAdd.length === 0} onClick={submitManualAdd}>{t('Save Relationship')}</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -772,12 +824,12 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
         <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col !p-6" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <div className="flex items-center justify-between pr-8 gap-2 flex-wrap">
-              <DialogTitle>{selectedPersonPhotos?.name}&apos;s Photos</DialogTitle>
+              <DialogTitle>{selectedPersonPhotos?.name}&apos;s {t('Photos')}</DialogTitle>
               <div className="flex items-center gap-1.5">
                 {/* Sort buttons */}
                 <div className="flex items-center rounded-md border overflow-hidden shadow-sm">
                   <button
-                    title="Oldest first"
+                    title={t("Oldest first")}
                     onClick={() => { setPhotosSort('date-asc'); setPhotosPage(1); setPersonPhotos([]); }}
                     className={`flex items-center gap-1 px-2 py-1 text-xs transition-colors ${
                       photosSort === 'date-asc' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'
@@ -786,7 +838,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
                     <CalendarArrowUp size={13} />
                   </button>
                   <button
-                    title="Newest first"
+                    title={t("Newest first")}
                     onClick={() => { setPhotosSort('date-desc'); setPhotosPage(1); setPersonPhotos([]); }}
                     className={`flex items-center gap-1 px-2 py-1 text-xs border-l transition-colors ${
                       photosSort === 'date-desc' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'
@@ -795,7 +847,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
                     <CalendarArrowDown size={13} />
                   </button>
                   <button
-                    title="Sort by filename (A→Z)"
+                    title={t("Sort by filename (A-Z)")}
                     onClick={() => { setPhotosSort('name'); setPhotosPage(1); setPersonPhotos([]); }}
                     className={`flex items-center gap-1 px-2 py-1 text-xs border-l transition-colors ${
                       photosSort === 'name' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'
@@ -811,12 +863,12 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
             </div>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto mt-4 min-h-[400px]">
-            {loadingPhotos && photosPage === 1 ? <div className="flex justify-center items-center h-full">Loading...</div> : personPhotos.length > 0 ? (
+            {loadingPhotos && photosPage === 1 ? <div className="flex justify-center items-center h-full">{t('Loading...')}</div> : personPhotos.length > 0 ? (
               <div className="flex flex-col gap-4">
                 <AssetGrid assets={personPhotos} isInternal={true} selectable={false} onSetProfilePhoto={handleSetProfilePhoto} />
-                {hasMorePhotos && <Button variant="outline" className="w-full mt-4" onClick={() => setPhotosPage(p => p + 1)} disabled={loadingPhotos}>{loadingPhotos ? "Loading..." : "Load More"}</Button>}
+                {hasMorePhotos && <Button variant="outline" className="w-full mt-4" onClick={() => setPhotosPage(p => p + 1)} disabled={loadingPhotos}>{loadingPhotos ? t("Loading...") : t("Load More")}</Button>}
               </div>
-            ) : <div className="flex justify-center items-center h-full text-muted-foreground">No photos found.</div>}
+            ) : <div className="flex justify-center items-center h-full text-muted-foreground">{t('No photos found')}</div>}
           </div>
         </DialogContent>
       </Dialog>
@@ -843,7 +895,7 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
                   </div>
                 );
               }
-              return <span className="text-muted-foreground text-sm">Loading...</span>;
+              return <span className="text-muted-foreground text-sm">{t('Loading...')}</span>;
             })()}
           </div>
           <DialogFooter>
@@ -859,13 +911,13 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
           <button onClick={() => { handleShowPhotos(contextMenu.personId, contextMenu.personName); setContextMenu(null); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted text-left"><ImageIcon size={14} className="text-blue-500" />{t('View Photos')}</button>
           <button onClick={() => { setEditingBirthdayFor({ id: contextMenu.personId, name: contextMenu.personName }); setContextMenu(null); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted text-left"><Edit2 size={14} className="text-purple-500" />{t('Edit Birthday')}</button>
           <button onClick={() => toggleDeceased(contextMenu.personId, personStates[contextMenu.personId]?.isDeceased ?? false)} className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted text-left">
-            {personStates[contextMenu.personId]?.isDeceased ? <><Heart size={14} className="text-rose-500 fill-rose-500/20" />{t('Mark as Living')}</> : <><Skull size={14} className="text-muted-foreground" />{t('Mark as Deceased')}</>}
+            {personStates[contextMenu.personId]?.isDeceased ? <><Heart size={14} className="text-rose-500 fill-rose-500/20" />{t('Mark as Living', personStates[contextMenu.personId]?.gender)}</> : <><Skull size={14} className="text-muted-foreground" />{t('Mark as Deceased', personStates[contextMenu.personId]?.gender)}</>}
           </button>
           <button onClick={() => toggleGender(contextMenu.personId, personStates[contextMenu.personId]?.gender ?? null)} className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted text-left">
             {personStates[contextMenu.personId]?.gender === 'female' ? <><UserRound size={14} className="text-blue-500" />{t('Mark as Man')}</> : <><UserRound size={14} className="text-pink-500" />{t('Mark as Woman')}</>}
           </button>
           <button onClick={() => handleHidePerson(contextMenu.personId)} className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-destructive/10 text-destructive text-left dark:hover:bg-red-900/30 dark:text-red-400">
-            <UserMinus size={14} />{t('Remove from Tree')}
+            <UserMinus size={14} />{t('Remove from tree')}
           </button>
         </div>
       )}

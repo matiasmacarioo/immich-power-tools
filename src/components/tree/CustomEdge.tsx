@@ -16,15 +16,42 @@ const CustomEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, ta
   const edgeStyle = {
     ...style,
     stroke: isHovered ? (style.stroke || relColor) : defaultColor,
-    strokeWidth: isHovered ? 3 : 1.5,
-    strokeDasharray: isDashed ? '5,5' : undefined,
-    opacity: style?.opacity || 1,
-    transition: 'stroke 300ms ease, stroke-width 300ms ease, opacity 300ms ease',
+    strokeWidth: isHovered ? (style.strokeWidth || 3.5) : 1.5,
+    strokeDasharray: (isDashed && !isHovered) ? '5,5' : undefined,
+    opacity: style?.opacity !== undefined ? style.opacity : 1,
+    transition: 'stroke 750ms cubic-bezier(0.4, 0, 0.2, 1), stroke-width 750ms cubic-bezier(0.4, 0, 0.2, 1), opacity 750ms cubic-bezier(0.4, 0, 0.2, 1)',
   };
 
   return (
     <>
-      <BaseEdge id={id} path={edgePath} style={edgeStyle} markerEnd={markerEnd} />
+      {/* Base/Background Path (Muted or Default) */}
+      <BaseEdge 
+        id={`${id}-base`} 
+        path={edgePath} 
+        style={{ 
+          ...edgeStyle, 
+          stroke: defaultColor, 
+          opacity: isHovered ? 0.3 : (style?.opacity || 1), 
+          strokeWidth: isHovered ? 2 : 1.5,
+          strokeDasharray: isDashed ? '5,5' : undefined,
+        }} 
+        markerEnd={markerEnd} 
+      />
+      
+      {/* Animated Foreground Path (Progressive Vibrant Color) */}
+      <path
+        id={id}
+        style={{
+          ...edgeStyle,
+          stroke: relColor,
+          fill: 'none',
+          opacity: isHovered ? (style?.opacity || 1) : 0,
+          pointerEvents: 'none',
+        }}
+        className={`react-flow__edge-path ${isHovered ? 'premium-draw keep-flowing' : ''}`}
+        d={edgePath}
+        markerEnd={markerEnd}
+      />
     </>
   );
 };

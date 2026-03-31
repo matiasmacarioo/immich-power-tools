@@ -12,12 +12,14 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 const RelationshipGraph = dynamic(() => import('@/components/shared/RelationshipGraph'), {
   ssr: false,
-  loading: () => <div className="h-full w-full flex items-center justify-center">Loading tree...</div>,
+  loading: () => <div className="h-full w-full flex items-center justify-center">Loading...</div>,
 });
 
 const RELATIONSHIP_TYPES = [
   'Parent', 'Step-Parent', 'Child', 'Spouse', 'Ex-Spouse', 'Separated',
-  'Estranged', 'Sibling', 'Step-Sibling', 'Cousin', 'Godparent', 'Godchild', 'Friend', 'Other',
+  'Estranged', 'Sibling', 'Step-Sibling', 'Cousin', 'Godparent', 'Godchild', 
+  'Sibling-in-law', 'Parent-in-law', 'Child-in-law', 
+  'Great-Aunt/Uncle', 'First-Cousin-Once-Removed', 'Friend', 'Other',
 ];
 
 /** Extract the last word of a name as the "family name / last name" */
@@ -41,12 +43,23 @@ export default function RelationshipTree() {
   const [isLayoutLocked, setIsLayoutLocked] = useState(true);
 
   useEffect(() => {
-    const saved = localStorage.getItem('rtree_compact_mode');
-    if (saved !== null) {
-      setIsCompactMode(saved === 'true');
-    }
-    // Default is already true (compact), no need for device detection
+    const savedCompact = localStorage.getItem('rtree_compact_mode');
+    if (savedCompact !== null) setIsCompactMode(savedCompact === 'true');
+
+    const savedFamily = localStorage.getItem('rtree_selected_family');
+    if (savedFamily !== null) setSelectedFamily(savedFamily);
+
+    const savedHideFiltered = localStorage.getItem('rtree_hide_filtered');
+    if (savedHideFiltered !== null) setHideFiltered(savedHideFiltered === 'true');
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('rtree_selected_family', selectedFamily);
+  }, [selectedFamily]);
+
+  useEffect(() => {
+    localStorage.setItem('rtree_hide_filtered', String(hideFiltered));
+  }, [hideFiltered]);
 
   const toggleCompactMode = () => {
     setIsCompactMode(prev => {
@@ -64,7 +77,7 @@ export default function RelationshipTree() {
       const data = await res.json();
       setRelationships(data);
     } catch {
-      toast.error('Failed to fetch relationships');
+      toast.error(t('Failed to fetch relationships'));
     }
   };
 
@@ -87,11 +100,11 @@ export default function RelationshipTree() {
 
   const handleAddRelation = async () => {
     if (!person1 || !person2 || !relationType) {
-      toast.error('Please fill all fields');
+      toast.error(t('Please fill all fields'));
       return;
     }
     if (person1 === person2) {
-      toast.error('Cannot create relationship with themselves');
+      toast.error(t('Cannot create relationship with themselves'));
       return;
     }
     setIsLoading(true);
@@ -102,17 +115,17 @@ export default function RelationshipTree() {
         body: JSON.stringify({ person1Id: person1, person2Id: person2, relationshipType: relationType }),
       });
       if (res.ok) {
-        toast.success('Relationship added!');
+        toast.success(t('Relationship added!'));
         setPerson1('');
         setPerson2('');
         setRelationType('');
         setPanelOpen(false);
         await refreshData();
       } else {
-        toast.error('Failed to add relationship');
+        toast.error(t('Failed to add relationship'));
       }
     } catch {
-      toast.error('Error adding relationship');
+      toast.error(t('Error adding relationship'));
     } finally {
       setIsLoading(false);
     }
@@ -135,13 +148,13 @@ export default function RelationshipTree() {
           body: JSON.stringify(data),
         });
         if (res.ok) {
-          toast.success('Relationships imported successfully!');
+          toast.success(t('Relationships imported successfully!'));
           refreshData();
         } else {
-          toast.error('Failed to import data');
+          toast.error(t('Failed to import data'));
         }
       } catch {
-        toast.error('Invalid JSON file');
+        toast.error(t('Invalid JSON file'));
       }
     };
     reader.readAsText(file);
@@ -278,7 +291,15 @@ export default function RelationshipTree() {
             </Button>
 
             {familyOptions.length > 0 && (
-              <Select value={selectedFamily} onValueChange={setSelectedFamily}>
+              <Select 
+                value={selectedFamily} 
+                onValueChange={(val) => {
+                  setSelectedFamily(val);
+                  if (val !== '__all__') {
+                    setHideFiltered(true);
+                  }
+                }}
+              >
                 <SelectTrigger
                   id="family-filter"
                   className={`h-8 text-sm shadow-md backdrop-blur-sm border transition-all gap-1.5 ${
@@ -311,7 +332,7 @@ export default function RelationshipTree() {
                 title={hideFiltered ? t('Show All') : t('Hide Filtered')}
               >
                 {hideFiltered ? <Users size={12} className="text-secondary-foreground" /> : <Users size={12} className="opacity-40" />}
-                {hideFiltered ? 'Ocultos' : 'Limpiar'}
+                {hideFiltered ? t('Hidden') : t('Clear')}
               </Button>
             )}
 
@@ -323,7 +344,7 @@ export default function RelationshipTree() {
               title={isCompactMode ? t('Detailed View') : t('Compact View')}
             >
               <LayoutTemplate size={12} className={isCompactMode ? "opacity-50" : "text-primary"} />
-              <span className="hidden sm:inline">{isCompactMode ? "Detallado" : "Compacto"}</span>
+              <span className="hidden sm:inline">{isCompactMode ? t('Detailed') : t('Compact')}</span>
             </Button>
 
             <Button

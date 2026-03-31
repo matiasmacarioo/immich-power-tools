@@ -8,14 +8,19 @@ import { useRouter } from "next/router";
 import PeopleFilterContext from "@/contexts/PeopleFilterContext";
 import PageLayout from "../layouts/PageLayout";
 import Header from "../shared/Header";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function PeopleList() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [people, setPeople] = useState<IPerson[]>([]);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [filters, setFilters] = useState<IPersonListFilters>({
+    sort: "coOccurringNamed",
+    sortOrder: "desc",
+    type: "nameless",
     ...router.query,
     page: 1,
   });
@@ -54,7 +59,7 @@ export default function PeopleList() {
     if (errorMessage) return <div>{errorMessage}</div>;
 
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-8 gap-1 p-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-8 gap-4 p-4">
         {people.map((person) => (
           <PersonItem person={person} key={person.id} onRemove={handleRemove} />
         ))}
@@ -71,7 +76,7 @@ export default function PeopleList() {
     >
       <PageLayout className="!p-0 !mb-0">
         <Header
-          leftComponent="Manage People"
+          leftComponent={t("Manage People")}
           rightComponent={<PeopleFilters />}
         />
         {renderContent()}

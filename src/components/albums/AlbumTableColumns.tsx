@@ -169,7 +169,7 @@ export const albumColumns: ColumnDef<IAlbum>[] = [
       return (
         <div className="space-y-1">
           <div className="text-sm">
-            {album.firstPhotoDate ? formatDate(album.firstPhotoDate.toString(), 'MMM d, yyyy') : ''} - {album.lastPhotoDate ? formatDate(album.lastPhotoDate.toString(), 'MMM d, yyyy') : ''}
+            {album.firstPhotoDate ? formatDate(album.firstPhotoDate.toString(), 'dd/MM/yyyy') : ''} - {album.lastPhotoDate ? formatDate(album.lastPhotoDate.toString(), 'dd/MM/yyyy') : ''}
           </div>
           <div className="text-xs text-muted-foreground">
             {numberOfDays === 0 ? '1 day' : `${numberOfDays.toLocaleString()} days`}
@@ -193,7 +193,7 @@ export const albumColumns: ColumnDef<IAlbum>[] = [
     },
     cell: ({ row }) => {
       const date = row.getValue("createdAt") as string
-      return <div>{formatDate(date, 'MMM d, yyyy')}</div>
+      return <div>{formatDate(date, 'dd/MM/yyyy')}</div>
     },
   },
   {

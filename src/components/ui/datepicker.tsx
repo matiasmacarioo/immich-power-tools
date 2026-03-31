@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 
+import { useLanguage } from "@/contexts/LanguageContext"
+
 interface IProps {
   date?: Date | null
   onSelect?: (date?: Date | null) => any
@@ -19,6 +21,7 @@ interface IProps {
  * closure issues when interacting with native browser year/month selects.
  */
 export function DatePicker({ date: _date, onSelect, iconOnly }: IProps) {
+  const { t, formatDate } = useLanguage()
   const [date, setDate] = React.useState<Date | null>(_date || null)
   const [open, setOpen] = React.useState(false)
   const containerRef = React.useRef<HTMLDivElement>(null)
@@ -85,7 +88,7 @@ export function DatePicker({ date: _date, onSelect, iconOnly }: IProps) {
         )}
       >
         <CalendarIcon className="h-4 w-4" />
-        {!iconOnly && <span>{date ? format(date, "PPP") : <span>Pick a date</span>}</span>}
+        {!iconOnly && <span>{date ? formatDate(date, "dd/MM/yyyy") : <span>{t("Pick a date")}</span>}</span>}
       </Button>
 
       {open && (
@@ -95,7 +98,7 @@ export function DatePicker({ date: _date, onSelect, iconOnly }: IProps) {
         >
           <div className="flex flex-col">
             <div className="flex items-center justify-between p-2 border-b bg-muted/30">
-              <span className="text-xs font-semibold px-2 uppercase tracking-tight text-muted-foreground">Select Birthday</span>
+              <span className="text-xs font-semibold px-2 uppercase tracking-tight text-muted-foreground">{t("Select Birthday")}</span>
               <div className="flex items-center gap-1">
                 {date && date.getFullYear() !== 1604 && (
                   <Button 
@@ -104,7 +107,7 @@ export function DatePicker({ date: _date, onSelect, iconOnly }: IProps) {
                     className="h-7 text-[10px] px-2"
                     onClick={handleYearUnknown}
                   >
-                    Year Unknown
+                    {t("Year Unknown")}
                   </Button>
                 )}
                 <Button 

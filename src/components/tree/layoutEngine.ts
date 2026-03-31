@@ -32,7 +32,7 @@ export function buildLayoutedGraph(opts: LayoutOptions): {
 
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
-  dagreGraph.setGraph({ rankdir: 'TB', ranksep: 100, nodesep: 40, edgesep: 30 });
+  dagreGraph.setGraph({ rankdir: 'TB', ranksep: isCompactMode ? 120 : 100, nodesep: isCompactMode ? 80 : 40, edgesep: 30 });
 
   const rawNodesMap: Record<string, Node> = {};
   const normalizedEdges = new Map<string, Edge>();
@@ -54,8 +54,8 @@ export function buildLayoutedGraph(opts: LayoutOptions): {
         sourceId: finalSource,
         targetId: finalTarget,
         label: type,
-        sourceName: peopleMap[finalSource]?.name || 'Unknown',
-        targetName: peopleMap[finalTarget]?.name || 'Unknown',
+        sourceName: peopleMap[finalSource]?.name || translateLabel('Unknown'),
+        targetName: peopleMap[finalTarget]?.name || translateLabel('Unknown'),
         sourceImage: peopleMap[finalSource]?.thumbnailPath || '',
         targetImage: peopleMap[finalTarget]?.thumbnailPath || '',
       });
@@ -93,7 +93,7 @@ export function buildLayoutedGraph(opts: LayoutOptions): {
         rawNodesMap[id] = {
           id, type: 'person', position: { x: 0, y: 0 },
           data: {
-            label: peopleMap[id]?.name || 'Unknown',
+            label: peopleMap[id]?.name || translateLabel('Unknown'),
             imageUrl: peopleMap[id]?.thumbnailPath || '',
             birthDate: (peopleMap[id] as any)?.birthDate || null,
             deathDate: (peopleMap[id] as any)?.deathDate || null,
@@ -330,9 +330,9 @@ export function buildLayoutedGraph(opts: LayoutOptions): {
       for (let j = 0; j < sg.length; j++) {
         rankMap.set(sg[j].id, simulatedX);
         const isLastSpouse = j === sg.length - 1;
-        if (!isLastSpouse) simulatedX += NODE_WIDTH + 20;
-        else if (isLinkedToNextSibling) simulatedX += NODE_WIDTH + 40;
-        else if (nextSg) simulatedX += NODE_WIDTH + 100;
+        if (!isLastSpouse) simulatedX += NODE_WIDTH + (isCompactMode ? 40 : 20);
+        else if (isLinkedToNextSibling) simulatedX += NODE_WIDTH + (isCompactMode ? 60 : 40);
+        else if (nextSg) simulatedX += NODE_WIDTH + (isCompactMode ? 140 : 100);
       }
     }
 
