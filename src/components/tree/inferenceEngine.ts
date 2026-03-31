@@ -102,6 +102,10 @@ export function buildRelationshipHelpers(relationships: RelRecord[]) {
         explicitType = exactEdge.person1Id === targetId ? 'Child-in-law' : 'Parent-in-law';
       } else if (exactEdge.relationshipType === 'Child-in-law') {
         explicitType = exactEdge.person1Id === targetId ? 'Parent-in-law' : 'Child-in-law';
+      } else if (exactEdge.relationshipType === 'Step-Parent') {
+        explicitType = exactEdge.person1Id === targetId ? 'Step-Child' : 'Step-Parent';
+      } else if (exactEdge.relationshipType === 'Step-Child') {
+        explicitType = exactEdge.person1Id === targetId ? 'Step-Parent' : 'Step-Child';
       } else {
         explicitType = exactEdge.relationshipType;
       }
@@ -114,7 +118,7 @@ export function buildRelationshipHelpers(relationships: RelRecord[]) {
 
     const findBiologicalRelation = (): InferredRelation | null => {
       // 0. Direct edge from DB is the most explicit for core family roles
-      if (explicitType && ['Parent', 'Child', 'Spouse', 'Sibling'].includes(explicitType)) {
+      if (explicitType && ['Parent', 'Child', 'Spouse', 'Sibling', 'Step-Sibling', 'Half-Sibling'].includes(explicitType)) {
         return { type: explicitType, path: [targetId, nodeId] };
       }
 

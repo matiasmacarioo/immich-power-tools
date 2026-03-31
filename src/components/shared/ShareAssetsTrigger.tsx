@@ -54,7 +54,7 @@ export default function ShareAssetsTrigger({ filters, buttonProps }: ShareAssets
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button {...buttonProps}>Share</Button>
+        <Button {...buttonProps}>{buttonProps?.children || 'Share'}</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

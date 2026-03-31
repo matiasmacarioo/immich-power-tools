@@ -7,7 +7,7 @@ import { PersonMergeDropdown } from "./PersonMergeDropdown";
 import PersonBirthdayCell from "./PersonBirthdayCell";
 import clsx from "clsx";
 import Link from "next/link";
-import { ArrowUpRight, Info } from "lucide-react";
+import { ArrowUpRight, Info, Merge, Eye, EyeOff, Share2 } from "lucide-react";
 import { useConfig } from "@/contexts/ConfigContext";
 import { useToast } from "../ui/use-toast";
 import { Badge } from "../ui/badge";
@@ -112,13 +112,38 @@ export default function PersonItem({ person, onRemove }: IProps) {
           </Link>
         </div>
         <div className="absolute top-2 right-2 flex flex-col gap-2">
-          <PersonMergeDropdown person={person} onRemove={onRemove} triggerClassName="!py-1.5 !px-3 md:!py-0.5 md:!px-2 text-sm md:text-xs h-9 md:h-7" />
-          <Button variant="outline" className="!py-1.5 !px-3 md:!py-0.5 md:!px-2 text-sm md:text-xs h-9 md:h-7" onClick={() => {
-            handleHide(!formData.isHidden);
-          }}>
-            {formData.isHidden ? "Show" : "Hide"}
+          <PersonMergeDropdown 
+            person={person} 
+            onRemove={onRemove} 
+            triggerClassName="flex items-center justify-start gap-2 max-w-[36px] md:max-w-[28px] hover:max-w-[120px] md:hover:max-w-[120px] !px-2 md:!px-1.5 text-sm md:text-xs h-9 md:h-7 overflow-hidden whitespace-nowrap transition-all duration-300 bg-black/50 hover:bg-black/70 border-none text-white backdrop-blur-md"
+            triggerChildren={
+              <>
+                <Merge className="w-5 h-5 md:w-4 md:h-4 shrink-0" />
+                <span>Merge</span>
+              </>
+            }
+          />
+          <Button 
+            variant="outline" 
+            className="flex items-center justify-start gap-2 max-w-[36px] md:max-w-[28px] hover:max-w-[120px] md:hover:max-w-[120px] !px-2 md:!px-1.5 text-sm md:text-xs h-9 md:h-7 overflow-hidden whitespace-nowrap transition-all duration-300 bg-black/50 hover:bg-black/70 border-none text-white backdrop-blur-md" 
+            onClick={() => handleHide(!formData.isHidden)}
+          >
+            {formData.isHidden ? <Eye className="w-5 h-5 md:w-4 md:h-4 shrink-0" /> : <EyeOff className="w-5 h-5 md:w-4 md:h-4 shrink-0" />}
+            <span>{formData.isHidden ? "Show" : "Hide"}</span>
           </Button>
-          <ShareAssetsTrigger filters={{ personIds: [person.id] }} buttonProps={{ variant: "outline", className: "!py-1.5 !px-3 md:!py-0.5 md:!px-2 text-sm md:text-xs h-9 md:h-7" }} />
+          <ShareAssetsTrigger 
+            filters={{ personIds: [person.id] }} 
+            buttonProps={{ 
+              variant: "outline", 
+              className: "flex items-center justify-start gap-2 max-w-[36px] md:max-w-[28px] hover:max-w-[120px] md:hover:max-w-[120px] !px-2 md:!px-1.5 text-sm md:text-xs h-9 md:h-7 overflow-hidden whitespace-nowrap transition-all duration-300 bg-black/50 hover:bg-black/70 border-none text-white backdrop-blur-md",
+              children: (
+                <>
+                  <Share2 className="w-5 h-5 md:w-4 md:h-4 shrink-0" />
+                  <span>Share</span>
+                </>
+              )
+            }} 
+          />
         </div>
       </div>
       {!editMode ? (

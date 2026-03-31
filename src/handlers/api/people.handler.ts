@@ -1,9 +1,9 @@
-import { CREATE_PERSON_PATH, LIST_PEOPLE_PATH, MERGE_PERSON_PATH, LOCAL_MERGE_PERSON_PATH, SEARCH_PEOPLE_PATH, SIMILAR_FACES_PATH, UPDATE_PERSON_PATH } from "@/config/routes"
+import { BASE_API_ENDPOINT, CREATE_PERSON_PATH, LIST_PEOPLE_PATH, MERGE_PERSON_PATH, LOCAL_MERGE_PERSON_PATH, SEARCH_PEOPLE_PATH, SIMILAR_FACES_PATH, UPDATE_PERSON_PATH } from "@/config/routes"
 import { cleanUpPerson } from "@/helpers/person.helper";
 import API from "@/lib/api"
 import { IPeopleListResponse, IPerson } from "@/types/person"
 
-type ISortField = "assetCount" | "updatedAt" | "createdAt";
+type ISortField = "assetCount" | "updatedAt" | "createdAt" | "coOccurringNamed";
 
 export interface IPersonListFilters {
   page: number | string;
@@ -33,7 +33,7 @@ export const invalidatePeopleCache = () => {
 export const createPerson = (name: string): Promise<IPerson> => {
   return API.post(CREATE_PERSON_PATH, { name }).then((res) => {
     invalidatePeopleCache();
-    return res as IPerson;
+    return cleanUpPerson(res as any);
   });
 };
 
@@ -45,6 +45,13 @@ export const updatePerson = (id: string, data: Partial<{
   featureFaceAssetId: string | null;
 }>) => {
   return API.put(UPDATE_PERSON_PATH(id), data).then((res) => {
+    invalidatePeopleCache();
+    return res;
+  });
+}
+
+export const deletePerson = (id: string) => {
+  return API.delete(`${BASE_API_ENDPOINT}/people/${id}`).then((res) => {
     invalidatePeopleCache();
     return res;
   });

@@ -17,11 +17,12 @@ import CustomEdge from '../tree/CustomEdge';
 import { buildLayoutedGraph } from '../tree/layoutEngine';
 import { buildRelationshipHelpers } from '../tree/inferenceEngine';
 import { getPersonAssets } from '@/handlers/api/person.handler';
-import { updatePerson } from '@/handlers/api/people.handler';
+import { updatePerson, deletePerson } from '@/handlers/api/people.handler';
 import AssetGrid from './AssetGrid';
 import { IAsset } from '@/types/asset';
-import { Skull, Heart, Image as ImageIcon, Calendar, UserRound } from 'lucide-react';
+import { Skull, Heart, Image as ImageIcon, Calendar, UserRound, UserMinus } from 'lucide-react';
 import PersonBirthdayCell from '../people/PersonBirthdayCell';
+import { getFakeAvatar } from '@/helpers/person.helper';
 
 interface RelationshipGraphProps {
   relationships: any[];
@@ -174,6 +175,24 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
     } catch { toast.error('Failed to update gender'); }
   };
 
+  const handleHidePerson = async (personId: string) => {
+    try {
+      await updatePerson(personId, { isHidden: true });
+      toast.success(t('Person removed from tree'));
+      setContextMenu(null);
+      if (onAddVisual) onAddVisual();
+    } catch {
+      try {
+        await deletePerson(personId);
+        toast.success(t('Virtual person successfully deleted'));
+        setContextMenu(null);
+        if (onAddVisual) onAddVisual();
+      } catch {
+        toast.error(t('Failed to remove person'));
+      }
+    }
+  };
+
   const handleRename = async () => {
     if (!renamingPerson || !newName.trim()) return;
     setIsRenaming(true);
@@ -227,11 +246,19 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
 
     const enrichedNodes = layoutedNodes.map((n) => {
       const isHighlighted = isFiltered ? highlightedIds.has(n.id) : true;
+      const stateGender = personStates[n.id]?.gender;
+      let baseImageUrl = n.data.imageUrl as string || '';
+
+      if (baseImageUrl.startsWith('data:image/svg+xml')) {
+        baseImageUrl = getFakeAvatar(stateGender);
+      }
+
       // Apply cache-busting to thumbnail if we've updated this person's profile photo
       const version = thumbnailVersions[n.id];
       const imageUrl = version
-        ? `${(n.data.imageUrl as string || '').split('?')[0]}?t=${version}`
-        : (n.data.imageUrl as string || '');
+        ? `${baseImageUrl.split('?')[0]}?t=${version}`
+        : baseImageUrl;
+
       return {
         ...n,
         data: {
@@ -836,6 +863,9 @@ function GraphInner({ relationships, people, highlightedIds, onAddVisual, isComp
           </button>
           <button onClick={() => toggleGender(contextMenu.personId, personStates[contextMenu.personId]?.gender ?? null)} className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted text-left">
             {personStates[contextMenu.personId]?.gender === 'female' ? <><UserRound size={14} className="text-blue-500" />{t('Mark as Man')}</> : <><UserRound size={14} className="text-pink-500" />{t('Mark as Woman')}</>}
+          </button>
+          <button onClick={() => handleHidePerson(contextMenu.personId)} className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-destructive/10 text-destructive text-left dark:hover:bg-red-900/30 dark:text-red-400">
+            <UserMinus size={14} />{t('Remove from Tree')}
           </button>
         </div>
       )}

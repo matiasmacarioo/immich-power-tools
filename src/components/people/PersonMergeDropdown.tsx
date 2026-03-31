@@ -41,6 +41,7 @@ interface PersonMergeDropdownProps {
   onRemove?: (person: IPerson) => void;
   onComplete?: (mergedPerson: IPerson) => void;
   triggerClassName?: string;
+  triggerChildren?: React.ReactNode;
 }
 
 export function PersonMergeDropdown({
@@ -48,6 +49,7 @@ export function PersonMergeDropdown({
   onRemove,
   onComplete,
   triggerClassName,
+  triggerChildren,
 }: PersonMergeDropdownProps) {
   const [searchedPeople, setSearchedPeople] = useState<IPerson[] | null>(null);
   const [similarPeople, setSimilarPeople] = useState<IPerson[]>([]);
@@ -243,7 +245,7 @@ export function PersonMergeDropdown({
           variant="outline"
           className={cn("!py-0.5 !px-2 text-xs h-7", triggerClassName)}
         >
-          Merge
+          {triggerChildren || "Merge"}
         </Button>
       </DialogTrigger>
       <DialogContent>

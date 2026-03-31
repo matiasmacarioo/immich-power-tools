@@ -20,7 +20,7 @@ export default function PeopleList() {
     page: 1,
   });
 
-  
+
   const fetchData = async () => {
     setLoading(true);
     setErrorMessage(null);
@@ -54,9 +54,9 @@ export default function PeopleList() {
     if (errorMessage) return <div>{errorMessage}</div>;
 
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1 p-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-8 gap-1 p-2">
         {people.map((person) => (
-          <PersonItem person={person} key={person.id} onRemove={handleRemove}/>
+          <PersonItem person={person} key={person.id} onRemove={handleRemove} />
         ))}
       </div>
     );
@@ -69,7 +69,7 @@ export default function PeopleList() {
           setFilters((prev) => ({ ...prev, ...newConfig })),
       }}
     >
-      <PageLayout  className="!p-0 !mb-0">
+      <PageLayout className="!p-0 !mb-0">
         <Header
           leftComponent="Manage People"
           rightComponent={<PeopleFilters />}

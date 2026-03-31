@@ -14,6 +14,9 @@ import AssetHeatMap from "@/components/analytics/exif/AssetHeatMap";
 import PeopleNamesChart from "@/components/analytics/exif/PeopleNamesChart";
 import GeoPhotosChart from "@/components/analytics/exif/GeoPhotosChart";
 import AlbumPhotosChart from "@/components/analytics/exif/AlbumPhotosChart";
+import FaceRecognitionChart from "@/components/analytics/exif/FaceRecognitionChart";
+import FaceSizesChart from "@/components/analytics/exif/FaceSizesChart";
+import TopRecognizedPeopleChart from "@/components/analytics/exif/TopRecognizedPeopleChart";
 import { useEffect, useState } from "react";
 import { getAssetStatistics, getLivePhotoStatistics } from "@/handlers/api/analytics.handler";
 import { humanizeBytes } from "@/helpers/string.helper";
@@ -134,9 +137,12 @@ export default function ExifDataAnalytics() {
         </div>
         <AssetHeatMap />
         
-        {/* New Analytics Charts */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        {/* Analytics Charts */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           <PeopleNamesChart />
+          <FaceRecognitionChart />
+          <FaceSizesChart />
+          <TopRecognizedPeopleChart />
           <GeoPhotosChart />
           <AlbumPhotosChart />
         </div>

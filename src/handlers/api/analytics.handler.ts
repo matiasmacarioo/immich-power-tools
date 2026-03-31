@@ -1,4 +1,4 @@
-import { ASSET_STATISTICS, EXIF_DISTRIBUTION_PATH, HEATMAP_DATA, LIVE_PHOTO_STATISTICS, PEOPLE_NAMES_STATISTICS, GEO_PHOTOS_STATISTICS, ALBUM_PHOTOS_STATISTICS } from "@/config/routes";
+import { ASSET_STATISTICS, EXIF_DISTRIBUTION_PATH, HEATMAP_DATA, LIVE_PHOTO_STATISTICS, PEOPLE_NAMES_STATISTICS, GEO_PHOTOS_STATISTICS, ALBUM_PHOTOS_STATISTICS, FACE_RECOGNITION_STATISTICS, FACE_SIZES_STATISTICS, TOP_RECOGNIZED_PEOPLE_STATISTICS } from "@/config/routes";
 import API from "@/lib/api";
 
 export type ISupportedEXIFColumns = 
@@ -30,4 +30,16 @@ export const getGeoPhotosStatistics = async () => {
 
 export const getAlbumPhotosStatistics = async () => {
   return API.get(ALBUM_PHOTOS_STATISTICS);
+}
+
+export const getFaceRecognitionStatistics = async () => {
+  return API.get(FACE_RECOGNITION_STATISTICS);
+}
+
+export const getFaceSizesStatistics = async () => {
+  return API.get(FACE_SIZES_STATISTICS);
+}
+
+export const getTopRecognizedPeopleStatistics = async () => {
+  return API.get(TOP_RECOGNIZED_PEOPLE_STATISTICS);
 }

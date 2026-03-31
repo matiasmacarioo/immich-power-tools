@@ -21,7 +21,7 @@ import {
 } from "drizzle-orm";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-type ISortField = "assetCount" | "updatedAt" | "createdAt";
+type ISortField = "assetCount" | "updatedAt" | "createdAt" | "coOccurringNamed";
 
 interface IQuery {
   page: number;
@@ -77,6 +77,14 @@ export default async function handler(
         isHidden: person.isHidden,
         updatedAt: person.updatedAt,
         assetCount: count(assetFaces.id),
+        coOccurringNamed: sql<number>`COALESCE(SUM((
+          SELECT COUNT(af2.id)
+          FROM "asset_face" af2
+          JOIN "person" p2 ON af2."personId" = p2.id
+          WHERE af2."assetId" = ${assetFaces.assetId}
+            AND p2.id != ${person.id}
+            AND p2.name != ''
+        )), 0)`.as('coOccurringNamed'),
       })
       .from(person)
       .leftJoin(assetFaces, eq(assetFaces.personId, person.id))
@@ -96,6 +104,14 @@ export default async function handler(
       sortedQuery = dbQuery.orderBy(
         sortOrder === "asc" ? asc(person.updatedAt) : desc(person.updatedAt)
       );
+    } else if (sort === "coOccurringNamed") {
+      sortedQuery = dbQuery.orderBy(
+        sortOrder === "asc"
+          ? asc(sql`"coOccurringNamed"`)
+          : desc(sql`"coOccurringNamed"`)
+      );
+    } else {
+      sortedQuery = dbQuery;
     }
     const numPage = Number(page) || 1;
     const numPerPage = Number(perPage) || 60;

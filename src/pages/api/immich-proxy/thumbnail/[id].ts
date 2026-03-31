@@ -4,6 +4,9 @@ import { ENV } from '@/config/environment';
 import { getCurrentUser } from '@/handlers/serverUtils/user.utils';
 import { getUserHeaders } from '@/helpers/user.helper';
 import { NextApiRequest, NextApiResponse } from 'next'
+import { localDb } from '@/config/localDb';
+
+import { getFakeAvatar } from '@/helpers/person.helper';
 
 export const config = {
   api: {
@@ -48,9 +51,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Send the image data
     res.send(Buffer.from(imageBuffer))
   } catch (error) {
-
-    res.redirect("https://placehold.co/400")
-    console.error('Error:', error)
-    // res.status(500).json({ message: 'Internal Server Error' })
+    try {
+      const state = localDb.prepare('SELECT gender FROM person_states WHERE personId = ?').get(id) as any;
+      const gender = state?.gender;
+      const fakeAvatar = getFakeAvatar(gender);
+      const base64Data = fakeAvatar.split(',')[1];
+      const buffer = Buffer.from(base64Data, 'base64');
+      res.setHeader('Content-Type', 'image/svg+xml');
+      res.setHeader('Content-Length', buffer.byteLength);
+      return res.send(buffer);
+    } catch (e) {
+      console.error('Failed to get local state for fallback avatar', e);
+      const fallback = getFakeAvatar(null);
+      const base64Data = fallback.split(',')[1];
+      const buffer = Buffer.from(base64Data, 'base64');
+      res.setHeader('Content-Type', 'image/svg+xml');
+      res.setHeader('Content-Length', buffer.byteLength);
+      return res.send(buffer);
+    }
   }
 }

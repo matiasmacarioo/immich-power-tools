@@ -154,6 +154,23 @@ export function PeopleFilters() {
             <SortDesc size={16} />
             <span>Updated At - DESC</span>
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() =>
+              handleChange({ sort: "coOccurringNamed", sortOrder: "desc" })
+            }
+          >
+            <SortDesc size={16} />
+            <span>Named Co-occurrences - DESC</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() =>
+              handleChange({ sort: "coOccurringNamed", sortOrder: "asc" })
+            }
+          >
+            <SortAsc size={16} />
+            <span>Named Co-occurrences - ASC</span>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       

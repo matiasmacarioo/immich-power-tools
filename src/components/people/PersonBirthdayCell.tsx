@@ -161,10 +161,10 @@ export default function PersonBirthdayCell({ person, onSaved, initialEditing = f
       label = lang === 'es' ? 'Sin fecha' : 'No date';
     } else if (initial.year === '1604') {
       const localD = new Date(2000, Number(initial.month), Number(initial.day));
-      label = lang === 'es' ? `${formatDate(localD, "d 'de' MMMM")} (Desconocido)` : `${formatDate(localD, "MMMM d")} (Unknown Year)`;
+      label = formatDate(localD, "dd/MM");
     } else {
       const localD = new Date(Number(initial.year), Number(initial.month), Number(initial.day));
-      label = formatDate(localD, 'PPP');
+      label = formatDate(localD, 'dd/MM/yyyy');
     }
 
     return (
