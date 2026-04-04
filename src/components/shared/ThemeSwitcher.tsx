@@ -15,7 +15,10 @@ export default function ThemeSwitcher() {
       onClick={toggleTheme}
       className={cn(
         "p-1 rounded-full transition-all duration-300 border border-primary text-primary",
+        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       )}
+      aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+      title={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
     >
       {theme === "light" ? <Moon size={10} /> : <Sun size={10} />}
     </button>
